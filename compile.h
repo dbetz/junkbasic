@@ -292,6 +292,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
 int IsIntegerLit(ParseTreeNode *node);
 ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
 int IsIntegerLit(ParseTreeNode *node);
+void PrintNode(ParseTreeNode *node, int indent);
 
 /* scan.c */
 void InitScan(ParseContext *c);

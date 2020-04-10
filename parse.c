@@ -102,7 +102,7 @@ void Compile(ParseContext *c)
     
     DumpSymbols(&c->globals, "Globals");
     
-    PrintNodeList(c->mainFunction->u.functionDefinition.bodyStatements, 0);
+    PrintNode(c->mainFunction, 0);
 }
 
 /* ParseStatement - parse a statement */
@@ -254,7 +254,8 @@ static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
     InitSymbolTable(&node->u.functionDefinition.arguments);
     InitSymbolTable(&node->u.functionDefinition.locals);
     PushBlock(c, BLOCK_FUNCTION, node);
-    c->bptr->pNextStatement = &c->mainFunction->u.functionDefinition.bodyStatements;
+    c->bptr->pNextStatement = &node->u.functionDefinition.bodyStatements;
+    c->currentFunction = node;
     return node;
 }
 
@@ -1381,12 +1382,10 @@ void PrintNode(ParseTreeNode *node, int indent)
 {
 	printf("%*s", indent, "");
     switch (node->nodeType) {
-#if 0
     case NodeTypeFunctionDefinition:
-        printf("FunctionDefinition: %s\n", node->type ? node->u.functionDefinition.symbol->name : "<main>");
+        printf("FunctionDefinition: %s\n", node->u.functionDefinition.symbol ? node->u.functionDefinition.symbol->name : "<main>");
         PrintNodeList(node->u.functionDefinition.bodyStatements, indent + 2);
         break;
-#endif
     case NodeTypeLetStatement:
         printf("Let\n");
         printf("%*slvalue\n", indent + 2, "");
