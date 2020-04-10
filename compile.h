@@ -149,10 +149,6 @@ typedef struct {
     String *strings;                /* parse - string constants */
     ParseTreeNode *mainFunction;    /* parse - the main function */
     ParseTreeNode *currentFunction; /* parse - the function currently being parsed */
-    SymbolTable arguments;          /* parse - arguments of current function definition */
-    SymbolTable locals;             /* parse - local variables of current function definition */
-    int localOffset;                /* parse - offset to next available local variable */
-    NodeListEntry *mainStatements;  /* parse - list of statements in the main program */
     Block blockBuf[10];             /* parse - stack of nested blocks */
     Block *bptr;                    /* parse - current block */
     Block *btop;                    /* parse - top of block stack */
@@ -205,7 +201,9 @@ struct ParseTreeNode {
     union {
         struct {
             Symbol *symbol;
+            SymbolTable arguments;
             SymbolTable locals;
+            int argumentOffset;
             int localOffset;
             NodeListEntry *bodyStatements;
         } functionDefinition;
@@ -312,7 +310,9 @@ void InitSymbolTable(SymbolTable *table);
 Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMVALUE value);
 Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value);
 Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value);
-Symbol *FindSymbol(SymbolTable *table, const char *name);
+Symbol *FindGlobal(ParseContext *c, const char *name);
+Symbol *FindArgument(ParseContext *c, const char *name);
+Symbol *FindLocal(ParseContext *c, const char *name);
 int IsConstant(Symbol *symbol);
 void DumpSymbols(SymbolTable *table, const char *tag);
 

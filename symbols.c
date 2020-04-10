@@ -11,6 +11,7 @@
 
 /* local function prototypes */
 static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, int value);
+static Symbol *FindSymbol(SymbolTable *table, const char *name);
 
 /* InitSymbolTable - initialize a symbol table */
 void InitSymbolTable(SymbolTable *table)
@@ -45,13 +46,13 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
 /* AddArgument - add an argument symbol to symbol table */
 Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value)
 {
-    return AddLocalSymbol(c, &c->arguments, name, storageClass, value);
+    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.arguments, name, storageClass, value);
 }
 
 /* AddLocal - add a local symbol to the symbol table */
 Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value)
 {
-    return AddLocalSymbol(c, &c->locals, name, storageClass, value);
+    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.locals, name, storageClass, value);
 }
 
 /* AddLocalSymbol - add a symbol to a local symbol table */
@@ -76,8 +77,26 @@ static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *n
     return sym;
 }
 
+/* FindGlobal - find a global symbol */
+Symbol *FindGlobal(ParseContext *c, const char *name)
+{
+    return FindSymbol(&c->globals, name);
+}
+
+/* FindArgument - find an argument symbol */
+Symbol *FindArgument(ParseContext *c, const char *name)
+{
+    return FindSymbol(&c->currentFunction->u.functionDefinition.arguments, name);
+}
+
+/* FindLocal - find an local symbol */
+Symbol *FindLocal(ParseContext *c, const char *name)
+{
+    return FindSymbol(&c->currentFunction->u.functionDefinition.locals, name);
+}
+
 /* FindSymbol - find a symbol in a symbol table */
-Symbol *FindSymbol(SymbolTable *table, const char *name)
+static Symbol *FindSymbol(SymbolTable *table, const char *name)
 {
     Symbol *sym = table->head;
     while (sym) {

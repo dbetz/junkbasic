@@ -93,9 +93,6 @@ void Compile(ParseContext *c)
     /* initialize scanner */
     InitScan(c);
     
-    /* start with the main block */
-    c->mainStatements = NULL;
-    
     /* parse the program */
     while (GetLine(c->sys)) {
         int tkn;
@@ -105,7 +102,7 @@ void Compile(ParseContext *c)
     
     DumpSymbols(&c->globals, "Globals");
     
-    PrintNodeList(c->mainStatements, 0);
+    PrintNodeList(c->mainFunction->u.functionDefinition.bodyStatements, 0);
 }
 
 /* ParseStatement - parse a statement */
@@ -254,6 +251,7 @@ static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionDefinition);
     node->u.functionDefinition.symbol = symbol;
+    InitSymbolTable(&node->u.functionDefinition.arguments);
     InitSymbolTable(&node->u.functionDefinition.locals);
     PushBlock(c, BLOCK_FUNCTION, node);
     c->bptr->pNextStatement = &c->mainFunction->u.functionDefinition.bodyStatements;
@@ -312,8 +310,8 @@ static void ParseDim(ParseContext *c)
         else {
             if (isArray)
                 ParseError(c, "local arrays are not supported");
-            AddLocal(c, name, SC_VARIABLE, c->localOffset);
-            ++c->localOffset;
+            AddLocal(c, name, SC_VARIABLE, c->currentFunction->u.functionDefinition.localOffset);
+            ++c->currentFunction->u.functionDefinition.localOffset;
         }
 
     } while ((tkn = GetToken(c)) == ',');
@@ -1144,7 +1142,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     Symbol *symbol;
 
     /* handle local variables within a function or subroutine */
-    if (c->currentFunction != c->mainFunction && (symbol = FindSymbol(&c->locals, name)) != NULL) {
+    if (c->currentFunction != c->mainFunction && (symbol = FindLocal(c, name)) != NULL) {
         if (symbol->storageClass == SC_CONSTANT) {
             node = NewParseTreeNode(c, NodeTypeIntegerLit);
             node->u.integerLit.value = symbol->v.value;
@@ -1156,13 +1154,13 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     }
 
     /* handle function or subroutine arguments or the return value symbol */
-    else if (c->currentFunction != c->mainFunction && (symbol = FindSymbol(&c->arguments, name)) != NULL) {
+    else if (c->currentFunction != c->mainFunction && (symbol = FindArgument(c, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeArgumentRef);
         node->u.symbolRef.symbol = symbol;
     }
 
     /* handle global symbols */
-    else if ((symbol = FindSymbol(&c->globals, c->token)) != NULL) {
+    else if ((symbol = FindGlobal(c, c->token)) != NULL) {
         if (symbol->storageClass == SC_CONSTANT) {
             node = NewParseTreeNode(c, NodeTypeIntegerLit);
             node->u.integerLit.value = symbol->v.value;
