@@ -43,6 +43,9 @@
 typedef int32_t VMVALUE;
 typedef uint32_t VMUVALUE;
 
+#define INT_FMT     "%d"
+#define UINT_FMT    "%u"
+
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
@@ -61,6 +64,9 @@ typedef uint32_t VMUVALUE;
 typedef int64_t VMVALUE;
 typedef uint64_t VMUVALUE;
 
+#define INT_FMT     "%lld"
+#define UINT_FMT    "%llu"
+
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
@@ -78,6 +84,9 @@ typedef uint64_t VMUVALUE;
 
 typedef int64_t VMVALUE;
 typedef uint64_t VMUVALUE;
+
+#define INT_FMT     "%lld"
+#define UINT_FMT    "%llu"
 
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
@@ -100,6 +109,9 @@ int strcasecmp(const char *s1, const char *s2);
 
 typedef int32_t VMVALUE;
 typedef uint32_t VMUVALUE;
+
+#define INT_FMT     "%d"
+#define UINT_FMT    "%u"
 
 //#define ANSI_FILE_IO
 

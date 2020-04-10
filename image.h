@@ -23,6 +23,8 @@ typedef struct {
 /* get the size of an object in words */
 #define GetObjSizeInWords(s)    (((s) + sizeof(VMVALUE) - 1) / sizeof(VMVALUE))
 
+#define F_SIZE          1
+
 /* nothing */
 #define NIL             (VMVALUE)0
 
@@ -68,6 +70,9 @@ typedef struct {
 #define OP_DUP          0x26    /* duplicate the top element of the stack */
 #define OP_NATIVE       0x27    /* execute native code */
 #define OP_TRAP         0x28    /* trap to handler */
+#define OP_RETURNZ      0x29
+#define OP_PUSHJ        0X2a
+#define OP_CLEAN        0x2b
 
 /* VM trap codes */
 enum {

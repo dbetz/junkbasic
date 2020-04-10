@@ -13,10 +13,6 @@
 #include "image.h"
 #include "system.h"
 
-#ifdef WIN32
-#define strcasecmp  _stricmp
-#endif
-
 /* program limits */
 #define MAXTOKEN        32
 
@@ -24,7 +20,6 @@
 typedef struct SymbolTable SymbolTable;
 typedef struct Symbol Symbol;
 typedef struct ParseTreeNode ParseTreeNode;
-typedef struct NodeListEntry NodeListEntry;
 typedef struct NodeListEntry NodeListEntry;
 
 typedef int Type;
@@ -57,15 +52,9 @@ enum {
     T_STOP,
     T_RETURN,
     T_PRINT,
-#ifdef USE_ASM
-    T_ASM,
-#endif
     T_ELSE_IF,  /* compound keywords */
     T_END_DEF,
     T_END_IF,
-#ifdef USE_ASM
-    T_END_ASM,
-#endif
     T_DO_WHILE,
     T_DO_UNTIL,
     T_LOOP_WHILE,
@@ -85,7 +74,7 @@ enum {
 /* block type */
 typedef enum {
     BLOCK_NONE,
-    BLOCK_MAIN,
+    BLOCK_FUNCTION,
     BLOCK_IF,
     BLOCK_ELSE,
     BLOCK_FOR,
@@ -100,21 +89,6 @@ struct Block {
     NodeListEntry **pNextStatement;
 };
 
-typedef enum {
-    GEN_BLOCK_SELECT
-} GenBlockType;
-
-typedef struct {
-    GenBlockType type;
-    union {
-        struct {
-            int first;
-            VMUVALUE nxt;
-            VMUVALUE end;
-        } selectBlock;
-    } u;
-} GenBlock;
-
 /* string structure */
 typedef struct String String;
 struct String {
@@ -123,16 +97,6 @@ struct String {
     int fixups;
     VMVALUE value;
     char data[1];
-};
-
-/* label structure */
-typedef struct Label Label;
-struct Label {
-    Label *next;
-    int placed;
-    int fixups;
-    int offset;
-    char name[1];
 };
 
 /* storage class ids */
@@ -164,12 +128,6 @@ struct Symbol {
     char name[1];
 };
 
-/* code types */
-typedef enum {
-    CODE_TYPE_MAIN,
-    CODE_TYPE_FUNCTION
-} CodeType;
-
 /* parse context */
 typedef struct {
     System *sys;                    /* system context */
@@ -189,9 +147,8 @@ typedef struct {
     int inComment;                  /* scan - inside of a slash/star comment */
     SymbolTable globals;            /* parse - global variables and constants */
     String *strings;                /* parse - string constants */
-    Label *labels;                  /* parse - local labels */
-    CodeType codeType;              /* parse - type of code under construction */
-    Symbol *codeSymbol;             /* parse - symbol table entry of code under construction */
+    ParseTreeNode *mainFunction;    /* parse - the main function */
+    ParseTreeNode *currentFunction; /* parse - the function currently being parsed */
     SymbolTable arguments;          /* parse - arguments of current function definition */
     SymbolTable locals;             /* parse - local variables of current function definition */
     int localOffset;                /* parse - offset to next available local variable */
@@ -205,30 +162,6 @@ typedef struct {
     ImageHdr *image;                /* header of image being constructed */
 } ParseContext;
 
-/* partial value */
-typedef struct PVAL PVAL;
-
-/* partial value function codes */
-typedef enum {
-    PV_LOAD,
-    PV_STORE,
-    PV_REFERENCE
-} PValOp;
-
-typedef void GenFcn(ParseContext *c, PValOp op, PVAL *pv);
-#define GEN_NULL    ((GenFcn *)0)
-
-/* partial value structure */
-struct PVAL {
-    Type *type;
-    GenFcn *fcn;
-    union {
-        Symbol *sym;
-        String *str;
-        VMVALUE val;
-    } u;
-};
-
 /* types */
 typedef enum {
     TYPE_INTEGER,
@@ -241,6 +174,7 @@ typedef enum {
 
 /* parse tree node types */
 enum {
+    NodeTypeFunctionDefinition,
     NodeTypeLetStatement,
     NodeTypeIfStatement,
     NodeTypeForStatement,
@@ -256,7 +190,6 @@ enum {
     NodeTypeLocalRef,
     NodeTypeStringLit,
     NodeTypeIntegerLit,
-    NodeTypeFunctionLit,
     NodeTypeUnaryOp,
     NodeTypeBinaryOp,
     NodeTypeArrayRef,
@@ -270,6 +203,12 @@ struct ParseTreeNode {
     int nodeType;
     int type;
     union {
+        struct {
+            Symbol *symbol;
+            SymbolTable locals;
+            int localOffset;
+            NodeListEntry *bodyStatements;
+        } functionDefinition;
         struct {
             ParseTreeNode *lvalue;
             ParseTreeNode *rvalue;
@@ -307,9 +246,6 @@ struct ParseTreeNode {
             VMVALUE value;
         } integerLit;
         struct {
-            int offset;
-        } functionLit;
-        struct {
             int op;
             ParseTreeNode *expr;
         } unaryOp;
@@ -342,22 +278,13 @@ struct NodeListEntry {
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
 void Compile(ParseContext *c);
-void InitCodeBuffer(ParseContext *c);
-void StartCode(ParseContext *c, CodeType type);
-VMVALUE StoreCode(ParseContext *c);
-void AddIntrinsic(ParseContext *c, const char *name, int index);
 String *AddString(ParseContext *c, const char *value);
 void DumpStrings(ParseContext *c);
-VMVALUE AddStringRef(String *str, int offset);
-VMVALUE AddSymbolRef(Symbol *sym, int offset);
 void *GlobalAlloc(ParseContext *c, size_t size);
 void *LocalAlloc(ParseContext *c, size_t size);
-void Fatal(ParseContext *c, const char *fmt, ...);
 
 /* statement.c */
 void ParseStatement(ParseContext *c, int tkn);
-BlockType CurrentBlockType(ParseContext *c);
-void CheckLabels(ParseContext *c);
 
 /* expr.c */
 void ParseRValue(ParseContext *c);
@@ -388,19 +315,6 @@ Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, i
 Symbol *FindSymbol(SymbolTable *table, const char *name);
 int IsConstant(Symbol *symbol);
 void DumpSymbols(SymbolTable *table, const char *tag);
-
-/* generate.c */
-void code_lvalue(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
-void code_rvalue(ParseContext *c, ParseTreeNode *expr);
-void rvalue(ParseContext *c, PVAL *pv);
-void chklvalue(ParseContext *c, PVAL *pv);
-void code_global(ParseContext *c, PValOp fcn, PVAL *pv);
-void code_local(ParseContext *c, PValOp fcn, PVAL *pv);
-int codeaddr(ParseContext *c);
-int putcbyte(ParseContext *c, int b);
-int putcword(ParseContext *c, VMVALUE w);
-void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val);
-void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 
 #endif
 

@@ -1,6 +1,7 @@
 TARGET=junkbasic
 
 SRCS=\
+generate.c \
 parse.c \
 scan.c \
 symbols.c \
@@ -14,7 +15,7 @@ system.h \
 types.h
 
 $(TARGET):	$(SRCS) $(HDRS) Makefile
-	$(CC) -DMAC -o $@ $(SRCS)
+	$(CC) -ferror-limit=100 -DMAC -o $@ $(SRCS)
 
 run:	$(TARGET)
 	./junkbasic
