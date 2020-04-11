@@ -70,6 +70,10 @@ void Compile(ParseContext *c)
 {
     System *sys = c->sys;
     
+    /* setup an error target */
+    if (setjmp(c->sys->errorTarget) != 0)
+        return;
+
     /* use the rest of the system free space for the compiler heap */
     c->nextGlobal = sys->freeNext;
     c->nextLocal = sys->freeTop;
