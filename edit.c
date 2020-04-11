@@ -35,6 +35,8 @@ void EditWorkspace(System *sys)
     EditBuf *editBuf;
     int lineNumber;
     char *token;
+    
+    editBuffer = AllocateAllFreeSpace(sys, &editBufferSize);
 
     if (!(editBuf = BufInit(sys, editBuffer, editBufferSize)))
         Abort(sys, "insufficient memory for edit buffer");

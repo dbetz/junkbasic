@@ -22,12 +22,15 @@ $(TARGET):	$(SRCS) $(HDRS) Makefile
 	$(CC) -DMAC -o $@ $(SRCS)
 
 $(TARGET).p2:	$(SRCS) $(HDRS) Makefile
-	$(P2CC) -DPROPELLER -o $@ $(SRCS) strncasecmp.c
+	$(P2CC) -DPROPELLER -2b -o $@ $(SRCS)
 
 run:	$(TARGET)
 	./junkbasic
 	
 p2:		$(TARGET).p2
+
+run-p2:		$(TARGET).p2
+	loadp2 -b 230400 $(TARGET).p2 -t
     
 clean:
 	rm -f $(TARGET)
