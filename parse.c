@@ -246,7 +246,6 @@ static void EndFunction(ParseContext *c)
 /* ParseDim - parse the 'DIM' statement */
 static void ParseDim(ParseContext *c)
 {
-#if 0
     char name[MAXTOKEN];
     VMVALUE value, size = 0;
     int isArray;
@@ -262,6 +261,7 @@ static void ParseDim(ParseContext *c)
         if (c->currentFunction == c->mainFunction) {
             Symbol *sym;
 
+#if 0
             /* check for initializers */
             if ((tkn = GetToken(c)) == '=') {
                 if (isArray)
@@ -279,6 +279,7 @@ static void ParseDim(ParseContext *c)
                 ClearArrayInitializers(c, isArray ? size : 1);
                 SaveToken(c, tkn);
             }
+#endif
 
             /* allocate space for the data */
             //value = (VMVALUE)c->image->free;
@@ -299,7 +300,6 @@ static void ParseDim(ParseContext *c)
     } while ((tkn = GetToken(c)) == ',');
 
     Require(c, tkn, T_EOL);
-#endif
 }
 
 /* ParseVariableDecl - parse a variable declaration */

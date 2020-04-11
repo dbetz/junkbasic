@@ -43,13 +43,18 @@ int GetLine(System *sys)
 /* VM_printf - formatted print */
 void VM_printf(const char *fmt, ...)
 {
-    char buf[100], *p = buf;
     va_list ap;
     va_start(ap, fmt);
+    VM_vprintf(fmt, ap);
+    va_end(ap);
+}
+
+void VM_vprintf(const char *fmt, va_list ap)
+{
+    char buf[80], *p = buf;
     vsprintf(buf, fmt, ap);
     while (*p != '\0')
         VM_putchar(*p++);
-    va_end(ap);
 }
 
 void Abort(System *sys, const char *fmt, ...)
