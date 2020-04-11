@@ -1,6 +1,6 @@
-/* db_generate.c - code generation functions
+/* generate.c - code generation functions
  *
- * Copyright (c) 2011 by David Michael Betz.  All rights reserved.
+ * Copyright (c) 2020 by David Michael Betz.  All rights reserved.
  *
  */
 
@@ -37,7 +37,7 @@ struct GenerateContext {
     uint8_t *codeBuf;               /* generate - code staging buffer */
 };
 
-/* db_generate.c */
+/* generate.c */
 void Generate(GenerateContext *c, ParseTreeNode *expr);
 void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 void code_global(GenerateContext *c, PValOp fcn, PVAL *pv);

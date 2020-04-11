@@ -1,6 +1,6 @@
 /* parse.c - expression parser
  *
- * Copyright (c) 2019 by David Michael Betz.  All rights reserved.
+ * Copyright (c) 2020 by David Michael Betz.  All rights reserved.
  *
  */
 

@@ -1,6 +1,6 @@
 /* types.h - type definitions for a simple virtual machine
  *
- * Copyright (c) 2019 by David Michael Betz.  All rights reserved.
+ * Copyright (c) 2020 by David Michael Betz.  All rights reserved.
  *
  */
 
@@ -29,33 +29,11 @@
 #define EDITBUFSIZE         1500
 #endif
 
-/*********/
-/* WIN32 */
-/*********/
-
-#if defined(WIN32)
-
-#include "db_inttypes.h"
-
-#include <stdio.h>
-#include <string.h>
-
-typedef int32_t VMVALUE;
-typedef uint32_t VMUVALUE;
-
-#define INT_FMT     "%d"
-#define UINT_FMT    "%u"
-
-#define VMCODEBYTE(p)           *(uint8_t *)(p)
-#define VMINTRINSIC(i)          Intrinsics[i]
-
-#define ANSI_FILE_IO
-
 /*******/
 /* MAC */
 /*******/
 
-#elif defined(MAC)
+#if defined(MAC)
 
 #include <stdio.h>
 #include <stdint.h>

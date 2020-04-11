@@ -1,5 +1,5 @@
-#ifndef __DB_EDIT_H__
-#define __DB_EDIT_H__
+#ifndef __EDIT_H__
+#define __EDIT_H__
 
 #include "system.h"
 
