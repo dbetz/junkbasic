@@ -15,7 +15,7 @@ system.h \
 types.h
 
 $(TARGET):	$(SRCS) $(HDRS) Makefile
-	$(CC) -ferror-limit=100 -DMAC -o $@ $(SRCS)
+	$(CC) -DMAC -o $@ $(SRCS)
 
 run:	$(TARGET)
 	./junkbasic

@@ -20,8 +20,9 @@
 
 /* these must be in the same order as the int enum */
 {   "REM",      T_REM       },
-{   "DEF",      T_DEF       },
 {   "DIM",      T_DIM       },
+{   "FUNCTION", T_FUNCTION  },
+{   "SUB",      T_SUB       },
 {   "AS",       T_AS        },
 {   "LET",      T_LET       },
 {   "IF",       T_IF        },
@@ -41,12 +42,8 @@
 {   "AND",      T_AND       },
 {   "OR",       T_OR        },
 {   "NOT",      T_NOT       },
-{   "STOP",     T_STOP      },
 {   "RETURN",   T_RETURN    },
 {   "PRINT",    T_PRINT     },
-#ifdef USE_ASM
-{   "ASM",      T_ASM       },
-#endif
 {   NULL,       0           }
 };
 
@@ -120,8 +117,9 @@ char *TokenName(int token)
         name = "<NONE>";
         break;
     case T_REM:
-    case T_DEF:
     case T_DIM:
+    case T_FUNCTION:
+    case T_SUB:
     case T_AS:
     case T_LET:
     case T_IF:
@@ -141,25 +139,19 @@ char *TokenName(int token)
     case T_AND:
     case T_OR:
     case T_NOT:
-    case T_STOP:
     case T_RETURN:
     case T_PRINT:
-#ifdef USE_ASM
-    case T_ASM:
-#endif
         name = ktab[token - T_REM].keyword;
         break;
-    case T_END_DEF:
-        name = "END DEF";
+    case T_END_FUNCTION:
+        name = "END FUNCTION";
+        break;
+    case T_END_SUB:
+        name = "END SUB";
         break;
     case T_END_IF:
         name = "END IF";
         break;
-#ifdef USE_ASM
-    case T_END_ASM:
-        name = "END ASM";
-        break;
-#endif
     case T_DO_WHILE:
         name = "DO WHILE";
         break;
@@ -300,17 +292,15 @@ static int GetToken1(ParseContext *c)
                 savePtr = c->sys->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
-                    case T_DEF:
-                        tkn = T_END_DEF;
+                    case T_FUNCTION:
+                        tkn = T_END_FUNCTION;
+                        break;
+                    case T_SUB:
+                        tkn = T_END_SUB;
                         break;
                     case T_IF:
                         tkn = T_END_IF;
                         break;
-#ifdef USE_ASM
-                    case T_ASM:
-                        tkn = T_END_ASM;
-                        break;
-#endif
                     default:
                         c->sys->linePtr = savePtr;
                         break;

@@ -143,7 +143,7 @@ void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
-        pv->u.val = expr->u.symbolRef.offset;
+        //pv->u.val = expr->u.symbolRef.offset;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);

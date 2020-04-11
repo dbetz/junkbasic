@@ -28,8 +28,9 @@ typedef int Type;
 enum {
     T_NONE,
     T_REM = 0x100,  /* keywords start here */
-    T_DEF,
     T_DIM,
+    T_FUNCTION,
+    T_SUB,
     T_AS,
     T_LET,
     T_IF,
@@ -52,14 +53,15 @@ enum {
     T_STOP,
     T_RETURN,
     T_PRINT,
-    T_ELSE_IF,  /* compound keywords */
-    T_END_DEF,
+    T_END_FUNCTION, /* compound keywords */
+    T_END_SUB,
+    T_ELSE_IF,
     T_END_IF,
     T_DO_WHILE,
     T_DO_UNTIL,
     T_LOOP_WHILE,
     T_LOOP_UNTIL,
-    T_LE,       /* non-keyword tokens */
+    T_LE,           /* non-keyword tokens */
     T_NE,
     T_GE,
     T_SHL,
@@ -94,7 +96,6 @@ typedef struct String String;
 struct String {
     String *next;
     int placed;
-    int fixups;
     VMVALUE value;
     char data[1];
 };
@@ -118,10 +119,6 @@ struct Symbol {
     StorageClass storageClass;
     int type;
     union {
-        struct {
-            VMUVALUE offset;
-            VMUVALUE fixups;
-        } variable;
         VMVALUE value;
         String *string;
     } v;
@@ -152,10 +149,6 @@ typedef struct {
     Block blockBuf[10];             /* parse - stack of nested blocks */
     Block *bptr;                    /* parse - current block */
     Block *btop;                    /* parse - top of block stack */
-    uint8_t *cptr;                  /* generate - next available code staging buffer position */
-    uint8_t *ctop;                  /* generate - top of code staging buffer */
-    uint8_t *codeBuf;               /* generate - code staging buffer */
-    ImageHdr *image;                /* header of image being constructed */
 } ParseContext;
 
 /* types */
@@ -180,6 +173,7 @@ enum {
     NodeTypeLoopWhileStatement,
     NodeTypeLoopUntilStatement,
     NodeTypeReturnStatement,
+    NodeTypeEndStatement,
     NodeTypeCallStatement,
     NodeTypeGlobalRef,
     NodeTypeArgumentRef,
@@ -235,7 +229,6 @@ struct ParseTreeNode {
         } callStatement;
         struct {
             Symbol *symbol;
-            int offset;
         } symbolRef;
         struct {
             String *string;

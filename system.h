@@ -22,7 +22,6 @@ typedef struct {
     jmp_buf errorTarget;        /* error target */
     GetLineHandler *getLine;    /* function to get a line of input */
     void *getLineCookie;        /* cookie for the getLine function */
-    int lineNumber;             /* current line number */
     uint8_t *freeSpace;         /* base of free space */
     uint8_t *freeMark;          /* top of permanently allocated storage */
     uint8_t *freeNext;          /* next free space available */

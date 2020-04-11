@@ -8,10 +8,8 @@
 #include "compile.h"
 
 /* local function prototypes */
-static void ParseDef(ParseContext *c);
-static void ParseConstantDef(ParseContext *c, char *name);
-static void ParseFunctionDef(ParseContext *c, char *name);
-static void ParseEndDef(ParseContext *c);
+static void ParseFunction(ParseContext *c);
+static void ParseEndFunction(ParseContext *c);
 static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
 static void EndFunction(ParseContext *c);
 static void ParseDim(ParseContext *c);
@@ -34,6 +32,7 @@ static void ParseLoop(ParseContext *c);
 static void ParseLoopWhile(ParseContext *c);
 static void ParseLoopUntil(ParseContext *c);
 static void ParseReturn(ParseContext *c);
+static void ParseEnd(ParseContext *c);
 static ParseTreeNode *ParseExpr2(ParseContext *c);
 static ParseTreeNode *ParseExpr3(ParseContext *c);
 static ParseTreeNode *ParseExpr4(ParseContext *c);
@@ -113,11 +112,11 @@ void ParseStatement(ParseContext *c, int tkn)
     case T_REM:
         /* just a comment so ignore the rest of the line */
         break;
-    case T_DEF:
-        ParseDef(c);
+    case T_FUNCTION:
+        ParseFunction(c);
         break;
-    case T_END_DEF:
-        ParseEndDef(c);
+    case T_END_FUNCTION:
+        ParseEndFunction(c);
         break;
     case T_DIM:
         ParseDim(c);
@@ -164,6 +163,9 @@ void ParseStatement(ParseContext *c, int tkn)
     case T_RETURN:
         ParseReturn(c);
         break;
+    case T_END:
+        ParseEnd(c);
+        break;
     default:
         SaveToken(c, tkn);
         ParseImpliedLetOrFunctionCall(c);
@@ -171,64 +173,35 @@ void ParseStatement(ParseContext *c, int tkn)
     }
 }
 
-/* ParseDef - parse the 'DEF' statement */
-static void ParseDef(ParseContext *c)
+/* ParseFunction - parse the 'FUNCTION' statement */
+static void ParseFunction(ParseContext *c)
 {
-    char name[MAXTOKEN];
+    ParseTreeNode *function;
+    Symbol *symbol;
     int tkn;
 
-    /* get the name being defined */
+    if (c->currentFunction != c->mainFunction)
+        ParseError(c, "nested function definitions not supported");
+    else if (c->bptr->type != BLOCK_FUNCTION)
+        ParseError(c, "function definition not allowed in another block");
+        
+    /* get the function name */
     FRequire(c, T_IDENTIFIER);
-    strcpy(name, c->token);
 
-    /* check for a constant definition */
-    if ((tkn = GetToken(c)) == '=')
-        ParseConstantDef(c, name);
-
-    /* otherwise, assume a function definition */
-    else {
-        SaveToken(c, tkn);
-        ParseFunctionDef(c, name);
-    }
-}
-
-/* ParseConstantDef - parse a 'DEF <name> =' statement */
-static void ParseConstantDef(ParseContext *c, char *name)
-{
-    ParseTreeNode *expr;
-
-    /* get the constant value */
-    expr = ParseExpr(c);
-
-    /* make sure it's a constant */
-    if (!IsIntegerLit(expr))
-        ParseError(c, "expecting a constant expression");
-
-    /* add the symbol as a global */
-    AddGlobal(c, name, SC_CONSTANT, expr->u.integerLit.value);
-
-    FRequire(c, T_EOL);
-}
-
-/* ParseFunctionDef - parse a 'DEF <name> =' statement */
-static void ParseFunctionDef(ParseContext *c, char *name)
-{
-    ParseTreeNode *functionNode = NewParseTreeNode(c, NodeTypeFunctionDefinition);
-    Symbol *functionSymbol;
-    int tkn;
-    
     /* enter the function name in the global symbol table */
-    functionSymbol = AddGlobal(c, name, SC_CONSTANT, 0);
+    symbol = AddGlobal(c, c->token, SC_CONSTANT, 0);
+    
+    /* create the function node */
+    function = StartFunction(c, symbol);
 
     /* get the argument list */
     if ((tkn = GetToken(c)) == '(') {
         if ((tkn = GetToken(c)) != ')') {
-            int offset = 0;
             SaveToken(c, tkn);
             do {
                 FRequire(c, T_IDENTIFIER);
-                AddArgument(c, c->token, SC_VARIABLE, offset);
-                ++offset;
+                AddArgument(c, c->token, SC_VARIABLE, function->u.functionDefinition.argumentOffset);
+                ++function->u.functionDefinition.argumentOffset;
             } while ((tkn = GetToken(c)) == ',');
         }
         Require(c, tkn, ')');
@@ -239,14 +212,18 @@ static void ParseFunctionDef(ParseContext *c, char *name)
     FRequire(c, T_EOL);
 }
 
-/* ParseEndDef - parse the 'END DEF' statement */
-static void ParseEndDef(ParseContext *c)
+/* ParseEndFunction - parse the 'END FUNCTION' statement */
+static void ParseEndFunction(ParseContext *c)
 {
     if (c->currentFunction == c->mainFunction)
         ParseError(c, "not in a function definition");
-    c->currentFunction = c->mainFunction;
+    else if (c->bptr->type != BLOCK_FUNCTION)
+        ParseError(c, "function definition not complete");
+    PrintNode(c->currentFunction, 0);
+    EndFunction(c);
 }
 
+/* StartFunction - start a function definition */
 static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionDefinition);
@@ -259,13 +236,17 @@ static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
     return node;
 }
 
+/* EndFunction - end a function definition */
 static void EndFunction(ParseContext *c)
 {
+    PopBlock(c);
+    c->currentFunction = c->mainFunction;
 }
 
 /* ParseDim - parse the 'DIM' statement */
 static void ParseDim(ParseContext *c)
 {
+#if 0
     char name[MAXTOKEN];
     VMVALUE value, size = 0;
     int isArray;
@@ -300,8 +281,8 @@ static void ParseDim(ParseContext *c)
             }
 
             /* allocate space for the data */
-            value = (VMVALUE)c->image->free;
-            c->image->free += size;
+            //value = (VMVALUE)c->image->free;
+            //c->image->free += size;
             
             /* add the symbol to the global symbol table */
             sym = AddGlobal(c, name, SC_VARIABLE, value);
@@ -318,6 +299,7 @@ static void ParseDim(ParseContext *c)
     } while ((tkn = GetToken(c)) == ',');
 
     Require(c, tkn, T_EOL);
+#endif
 }
 
 /* ParseVariableDecl - parse a variable declaration */
@@ -384,6 +366,7 @@ static VMVALUE ParseScalarInitializer(ParseContext *c)
 /* ParseArrayInitializers - parse array initializers */
 static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 {
+#if 0
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     int done = VMFALSE;
@@ -439,16 +422,19 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         }
     }
+#endif
 }
 
 /* ClearArrayInitializers - clear the array initializers */
 static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 {
+#if 0
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     if (dataPtr + size > dataTop)
         ParseError(c, "insufficient image space");
     memset(dataPtr, 0, size * sizeof(VMVALUE));
+#endif
 }
 
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */
@@ -703,6 +689,14 @@ static void ParseReturn(ParseContext *c)
     
     /* add the statement to the current function */
     AddNodeToList(c, &c->bptr->pNextStatement, node);
+}
+
+/* ParseEnd - parse the 'END' statement */
+static void ParseEnd(ParseContext *c)
+{
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeEndStatement);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    FRequire(c, T_EOL);
 }
 
 /* ParseExpr - handle the OR operator */
@@ -1384,6 +1378,8 @@ void PrintNode(ParseTreeNode *node, int indent)
     switch (node->nodeType) {
     case NodeTypeFunctionDefinition:
         printf("FunctionDefinition: %s\n", node->u.functionDefinition.symbol ? node->u.functionDefinition.symbol->name : "<main>");
+        DumpSymbols(&node->u.functionDefinition.arguments, "Arguments");
+        DumpSymbols(&node->u.functionDefinition.locals, "Locals");
         PrintNodeList(node->u.functionDefinition.bodyStatements, indent + 2);
         break;
     case NodeTypeLetStatement:
@@ -1453,6 +1449,9 @@ void PrintNode(ParseTreeNode *node, int indent)
             PrintNode(node->u.returnStatement.expr, indent + 4);
         }
         break;
+    case NodeTypeEndStatement:
+        printf("End\n");
+        break;
     case NodeTypeCallStatement:
         printf("CallStatement\n");
         printf("%*sexpr\n", indent + 2, "");
@@ -1461,8 +1460,11 @@ void PrintNode(ParseTreeNode *node, int indent)
     case NodeTypeGlobalRef:
         printf("GlobalRef: %s\n", node->u.symbolRef.symbol->name);
         break;
+    case NodeTypeArgumentRef:
+        printf("ArgumentRef: " INT_FMT "\n", node->u.symbolRef.symbol->v.value);
+        break;
     case NodeTypeLocalRef:
-        printf("LocalRef: %d\n", node->u.symbolRef.offset);
+        printf("LocalRef: " INT_FMT "\n", node->u.symbolRef.symbol->v.value);
         break;
     case NodeTypeStringLit:
 		printf("StringLit: '%s'\n",node->u.stringLit.string->data);

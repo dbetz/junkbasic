@@ -8,17 +8,7 @@
 #define __IMAGE_H__
 
 #include <stdarg.h>
-#include "system.h"
 #include "types.h"
-
-/* in-memory image header */
-typedef struct {
-    System *sys;        /* system state */
-    int size;           /* size of image buffer including the image header in bytes */
-    VMVALUE *free;      /* next free location in the image data buffer */
-    VMVALUE *top;       /* top of the image data buffer */
-    VMVALUE data[1];    /* data space */
-} ImageHdr;
 
 /* get the size of an object in words */
 #define GetObjSizeInWords(s)    (((s) + sizeof(VMVALUE) - 1) / sizeof(VMVALUE))
@@ -84,11 +74,5 @@ enum {
     TRAP_PrintNL      = 5,
     TRAP_PrintFlush   = 6,
 };
-
-/* prototypes */
-ImageHdr *AllocateImage(System *sys, int imageBufferSize);
-void InitImage(ImageHdr *image);
-VMVALUE StoreVector(ImageHdr *image, const VMVALUE *buf, int size);
-VMVALUE StoreBVector(ImageHdr *image, const uint8_t *buf, int size);
 
 #endif
