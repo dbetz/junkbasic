@@ -10,6 +10,7 @@ typedef struct {
 } Line;
 
 typedef struct {
+    System *sys;
     uint8_t *bufferMax;
     uint8_t *bufferTop;
     Line *currentLine;
@@ -20,7 +21,7 @@ typedef struct {
 void EditWorkspace(System *sys);
 
 /* editbuf.c */
-EditBuf *BufInit(uint8_t *space, size_t size);
+EditBuf *BufInit(System *sys, uint8_t *space, size_t size);
 void BufNew(EditBuf *buf);
 int BufAddLineN(EditBuf *buf, int lineNumber, const char *text);
 int BufDeleteLineN(EditBuf *buf, int lineNumber);

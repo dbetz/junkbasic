@@ -8,22 +8,20 @@
 #define MAXTOKEN    32
 
 /* command handlers */
-static void DoNew(System *sys);
-static void DoList(System *sys);
-static void DoRun(System *sys);
+static void DoNew(EditBuf *buf);
+static void DoList(EditBuf *buf);
+static void DoRun(EditBuf *buf);
 
 /* command table */
 static struct {
     char *name;
-    void (*handler)(System *sys);
+    void (*handler)(EditBuf *buf);
 } cmds[] = {
 {   "NEW",      DoNew   },
 {   "LIST",     DoList  },
 {   "RUN",      DoRun   },
 {   NULL,       NULL    }
 };
-
-static EditBuf *editBuf;
 
 /* prototypes */
 static char *NextToken(System *sys);
@@ -34,12 +32,11 @@ void EditWorkspace(System *sys)
 {
     uint8_t *editBuffer;
     size_t editBufferSize;
+    EditBuf *editBuf;
     int lineNumber;
     char *token;
 
-    editBuffer = AllocateAllFreeSpace(sys, &editBufferSize);
-    
-    if (!(editBuf = BufInit(editBuffer, editBufferSize)))
+    if (!(editBuf = BufInit(sys, editBuffer, editBufferSize)))
         Abort(sys, "insufficient memory for edit buffer");
 
     while (GetLine(sys)) {
@@ -60,7 +57,7 @@ void EditWorkspace(System *sys)
                     if (strcasecmp(token, cmds[i].name) == 0)
                         break;
                 if (cmds[i].handler) {
-                    (*cmds[i].handler)(sys);
+                    (*cmds[i].handler)(editBuf);
                     VM_printf("OK\n");
                 }
                 else {
@@ -71,30 +68,33 @@ void EditWorkspace(System *sys)
     }
 }
 
-static void DoNew(System *sys)
+static void DoNew(EditBuf *buf)
 {
-    BufNew(editBuf);
+    BufNew(buf);
 }
 
-static void DoList(System *sys)
+static void DoList(EditBuf *buf)
 {
     int lineNumber;
-    BufSeekN(editBuf, 0);
-    while (BufGetLine(editBuf, &lineNumber, sys->lineBuf))
-        VM_printf("%d%s", lineNumber, sys->lineBuf);
+    BufSeekN(buf, 0);
+    while (BufGetLine(buf, &lineNumber, buf->sys->lineBuf))
+        VM_printf("%d%s", lineNumber, buf->sys->lineBuf);
 }
 
 static int EditGetLine(char *buf, int len, void *cookie)
 {
+    EditBuf *editBuf = (EditBuf *)cookie;
     int lineNumber;
     return BufGetLine(editBuf, &lineNumber, buf);
 }
 
-static void DoRun(System *sys)
+static void DoRun(EditBuf *buf)
 {
+    System *sys = buf->sys;
     ParseContext *c;
 
-    ResetToMark(sys, editBuf->bufferTop);
+    /* give the unused edit buffer space back to the system */
+    ResetToMark(sys, buf->bufferTop);
     
     if (!(c = InitParseContext(sys)))
         VM_printf("insufficient memory");
@@ -106,8 +106,9 @@ static void DoRun(System *sys)
         getLineCookie = sys->getLineCookie;
     
         sys->getLine = EditGetLine;
+        sys->getLineCookie = buf;
 
-        BufSeekN(editBuf, 0);
+        BufSeekN(buf, 0);
 
         Compile(c);
 
@@ -115,7 +116,8 @@ static void DoRun(System *sys)
         sys->getLineCookie = getLineCookie;
     }
     
-    ResetToMark(sys, editBuf->bufferMax);
+    /* grab the rest of the system memory again for the edit buffer */
+    ResetToMark(sys, buf->bufferMax);
 }
 
 static char *NextToken(System *sys)

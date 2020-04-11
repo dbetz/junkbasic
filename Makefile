@@ -1,3 +1,5 @@
+P2CC=fastspin
+
 TARGET=junkbasic
 
 SRCS=\
@@ -19,8 +21,13 @@ types.h
 $(TARGET):	$(SRCS) $(HDRS) Makefile
 	$(CC) -DMAC -o $@ $(SRCS)
 
+$(TARGET).p2:	$(SRCS) $(HDRS) Makefile
+	$(P2CC) -DPROPELLER -o $@ $(SRCS) strncasecmp.c
+
 run:	$(TARGET)
 	./junkbasic
+	
+p2:		$(TARGET).p2
     
 clean:
 	rm -f $(TARGET)

@@ -3,11 +3,12 @@
 
 static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine);
 
-EditBuf *BufInit(uint8_t *space, size_t size)
+EditBuf *BufInit(System *sys, uint8_t *space, size_t size)
 {
     EditBuf *buf = (EditBuf *)space;
     if (size < sizeof(EditBuf))
         return NULL;
+    buf->sys = sys;
     buf->bufferMax = space + size;
     buf->bufferTop = buf->buffer;
     buf->currentLine = (Line *)buf->buffer;
