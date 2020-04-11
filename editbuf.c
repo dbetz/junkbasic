@@ -1,26 +1,26 @@
 #include <string.h>
 #include "edit.h"
 
-typedef struct {
-    int lineNumber;
-    int length;
-    char text[1];
-} Line;
+static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine);
 
-static uint8_t buffer[EDITBUFSIZE];
-static uint8_t *bufferMax = buffer + sizeof(buffer);
-static uint8_t *bufferTop = buffer;
-static Line *current = (Line *)buffer;
-
-static int FindLineN(int lineNumber, Line **pLine);
-
-void BufInit(void)
+EditBuf *BufInit(uint8_t *space, size_t size)
 {
-    bufferTop = buffer;
-    current = (Line *)buffer;
+    EditBuf *buf = (EditBuf *)space;
+    if (size < sizeof(EditBuf))
+        return NULL;
+    buf->bufferMax = space + size;
+    buf->bufferTop = buf->buffer;
+    buf->currentLine = (Line *)buf->buffer;
+    return buf;
 }
 
-int BufAddLineN(int lineNumber, const char *text)
+void BufNew(EditBuf *buf)
+{
+    buf->bufferTop = buf->buffer;
+    buf->currentLine = (Line *)buf->buffer;
+}
+
+int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
 {
     int newLength = sizeof(Line) + strlen(text);
     int spaceNeeded;
@@ -31,7 +31,7 @@ int BufAddLineN(int lineNumber, const char *text)
     newLength = (newLength + ALIGN_MASK) & ~ALIGN_MASK;
 
     /* replace an existing line */
-    if (FindLineN(lineNumber, &line)) {
+    if (FindLineN(buf, lineNumber, &line)) {
         next = (uint8_t *)line + line->length;
         spaceNeeded = newLength - line->length;
     }
@@ -43,13 +43,13 @@ int BufAddLineN(int lineNumber, const char *text)
     }
 
     /* make sure there is enough space */
-    if (bufferTop + spaceNeeded > bufferMax)
+    if (buf->bufferTop + spaceNeeded > buf->bufferMax)
         return VMFALSE;
 
     /* make space for the new line */
-    if (next < bufferTop && spaceNeeded != 0)
-        memmove(next + spaceNeeded, next, bufferTop - next);
-    bufferTop += spaceNeeded;
+    if (next < buf->bufferTop && spaceNeeded != 0)
+        memmove(next + spaceNeeded, next, buf->bufferTop - next);
+    buf->bufferTop += spaceNeeded;
 
     /* insert the new line */
     if (newLength > 0) {
@@ -62,13 +62,13 @@ int BufAddLineN(int lineNumber, const char *text)
     return VMTRUE;
 }
 
-int BufDeleteLineN(int lineNumber)
+int BufDeleteLineN(EditBuf *buf, int lineNumber)
 {
     Line *line, *next;
     int spaceFreed;
 
     /* find the line to delete */
-    if (!FindLineN(lineNumber, &line))
+    if (!FindLineN(buf, lineNumber, &line))
         return VMFALSE;
 
     /* get a pointer to the next line */
@@ -76,49 +76,49 @@ int BufDeleteLineN(int lineNumber)
     spaceFreed = line->length;
 
     /* remove the line to be deleted */
-    if ((uint8_t *)next < bufferTop)
-        memmove(line, next, bufferTop - (uint8_t *)next);
-    bufferTop -= spaceFreed;
+    if ((uint8_t *)next < buf->bufferTop)
+        memmove(line, next, buf->bufferTop - (uint8_t *)next);
+    buf->bufferTop -= spaceFreed;
 
     /* return successfully */
     return VMTRUE;
 }
 
-int BufSeekN(int lineNumber)
+int BufSeekN(EditBuf *buf, int lineNumber)
 {
     /* if the line number is zero start at the first line */
     if (lineNumber == 0)
-        current = (Line *)buffer;
+        buf->currentLine = (Line *)buf->buffer;
 
     /* otherwise, start at the specified line */
-    else if (!FindLineN(lineNumber, &current))
+    else if (!FindLineN(buf, lineNumber, &buf->currentLine))
         return VMFALSE;
 
     /* return successfully */
     return VMTRUE;
 }
 
-int BufGetLine(int *pLineNumber, char *text)
+int BufGetLine(EditBuf *buf, int *pLineNumber, char *text)
 {
     /* check for the end of the buffer */
-    if ((uint8_t *)current >= bufferTop)
+    if ((uint8_t *)buf->currentLine >= buf->bufferTop)
         return VMFALSE;
 
     /* get the current line */
-    *pLineNumber = current->lineNumber;
-    strcpy(text, current->text);
+    *pLineNumber = buf->currentLine->lineNumber;
+    strcpy(text, buf->currentLine->text);
 
     /* move ahead to the next line */
-    current = (Line *)((char *)current + current->length);
+    buf->currentLine = (Line *)((char *)buf->currentLine + buf->currentLine->length);
 
     /* return successfully */
     return VMTRUE;
 }
 
-static int FindLineN(int lineNumber, Line **pLine)
+static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine)
 {
-    uint8_t *p = buffer;
-    while (p < bufferTop) {
+    uint8_t *p = buf->buffer;
+    while (p < buf->bufferTop) {
         Line *line = (Line *)p;
         if (lineNumber <= line->lineNumber) {
             *pLine = line;

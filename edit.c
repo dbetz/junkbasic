@@ -13,7 +13,7 @@ static void DoList(System *sys);
 static void DoRun(System *sys);
 
 /* command table */
-/*static*/ struct {
+static struct {
     char *name;
     void (*handler)(System *sys);
 } cmds[] = {
@@ -22,6 +22,9 @@ static void DoRun(System *sys);
 {   "RUN",      DoRun   },
 {   NULL,       NULL    }
 };
+
+static uint8_t editBuffer[16 * 1024];
+static EditBuf *editBuf;
 
 /* prototypes */
 static char *NextToken(System *sys);
@@ -33,17 +36,18 @@ void EditWorkspace(System *sys)
     int lineNumber;
     char *token;
 
-    BufInit();
-    
+    if (!(editBuf = BufInit(editBuffer, sizeof(editBuffer))))
+        Abort(sys, "insufficient memory for edit buffer");
+
     while (GetLine(sys)) {
 
         if ((token = NextToken(sys)) != NULL) {
             if (ParseNumber(token, &lineNumber)) {
                 if (IsBlank(sys->linePtr)) {
-                    if (!BufDeleteLineN(lineNumber))
+                    if (!BufDeleteLineN(editBuf, lineNumber))
                         VM_printf("no line %d\n", lineNumber);
                 }
-                else if (!BufAddLineN(lineNumber, sys->linePtr))
+                else if (!BufAddLineN(editBuf, lineNumber, sys->linePtr))
                     VM_printf("out of edit buffer space\n");
             }
 
@@ -66,21 +70,21 @@ void EditWorkspace(System *sys)
 
 static void DoNew(System *sys)
 {
-    BufInit();
+    BufNew(editBuf);
 }
 
 static void DoList(System *sys)
 {
     int lineNumber;
-    BufSeekN(0);
-    while (BufGetLine(&lineNumber, sys->lineBuf))
+    BufSeekN(editBuf, 0);
+    while (BufGetLine(editBuf, &lineNumber, sys->lineBuf))
         VM_printf("%d%s", lineNumber, sys->lineBuf);
 }
 
 static int EditGetLine(char *buf, int len, void *cookie)
 {
     int lineNumber;
-    return BufGetLine(&lineNumber, buf);
+    return BufGetLine(editBuf, &lineNumber, buf);
 }
 
 static void DoRun(System *sys)
@@ -94,7 +98,7 @@ static void DoRun(System *sys)
     
     sys->getLine = EditGetLine;
 
-    BufSeekN(0);
+    BufSeekN(editBuf, 0);
 
     if (c) {
         Compile(c);
