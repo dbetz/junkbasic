@@ -31,6 +31,19 @@ uint8_t *AllocateFreeSpace(System *sys, size_t size)
     return p;
 }
 
+uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize)
+{
+    uint8_t *p = sys->freeNext;
+    *pSize = sys->freeTop - p;
+    sys->freeNext += *pSize;
+    return p;
+}
+
+void ResetToMark(System *sys, uint8_t *mark)
+{
+    sys->freeNext = mark;
+}
+
 /* GetLine - get the next input line */
 int GetLine(System *sys)
 {

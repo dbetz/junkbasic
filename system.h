@@ -32,6 +32,8 @@ typedef struct {
 
 System *InitSystem(uint8_t *freeSpace, size_t freeSize);
 uint8_t *AllocateFreeSpace(System *sys, size_t size);
+uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize);
+void ResetToMark(System *sys, uint8_t *mark);
 int GetLine(System *sys);
 void Abort(System *sys, const char *fmt, ...);
 

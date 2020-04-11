@@ -23,7 +23,6 @@ static struct {
 {   NULL,       NULL    }
 };
 
-static uint8_t editBuffer[16 * 1024];
 static EditBuf *editBuf;
 
 /* prototypes */
@@ -33,10 +32,14 @@ static int IsBlank(char *p);
 
 void EditWorkspace(System *sys)
 {
+    uint8_t *editBuffer;
+    size_t editBufferSize;
     int lineNumber;
     char *token;
 
-    if (!(editBuf = BufInit(editBuffer, sizeof(editBuffer))))
+    editBuffer = AllocateAllFreeSpace(sys, &editBufferSize);
+    
+    if (!(editBuf = BufInit(editBuffer, editBufferSize)))
         Abort(sys, "insufficient memory for edit buffer");
 
     while (GetLine(sys)) {
@@ -89,23 +92,30 @@ static int EditGetLine(char *buf, int len, void *cookie)
 
 static void DoRun(System *sys)
 {
-    ParseContext *c = InitParseContext(sys);
-    GetLineHandler *getLine;
-    void *getLineCookie;
+    ParseContext *c;
 
-    getLine = sys->getLine;
-    getLineCookie = sys->getLineCookie;
+    ResetToMark(sys, editBuf->bufferTop);
     
-    sys->getLine = EditGetLine;
+    if (!(c = InitParseContext(sys)))
+        VM_printf("insufficient memory");
+    else {
+        GetLineHandler *getLine;
+        void *getLineCookie;
 
-    BufSeekN(editBuf, 0);
+        getLine = sys->getLine;
+        getLineCookie = sys->getLineCookie;
+    
+        sys->getLine = EditGetLine;
 
-    if (c) {
+        BufSeekN(editBuf, 0);
+
         Compile(c);
-    }
 
-    sys->getLine = getLine;
-    sys->getLineCookie = getLineCookie;
+        sys->getLine = getLine;
+        sys->getLineCookie = getLineCookie;
+    }
+    
+    ResetToMark(sys, editBuf->bufferMax);
 }
 
 static char *NextToken(System *sys)
