@@ -352,7 +352,6 @@ static int GetToken1(ParseContext *c)
     }
 
     /* return the token */
-    printf("tkn: %s\n", TokenName(tkn));
     return tkn;
 }
 

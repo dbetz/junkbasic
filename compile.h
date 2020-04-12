@@ -128,7 +128,6 @@ struct Symbol {
 /* parse context */
 typedef struct {
     System *sys;                    /* system context */
-    uint8_t *freeMark;              /* saved position for reclaiming compiler memory */
     uint8_t *nextGlobal;            /* next global heap space location */
     uint8_t *nextLocal;             /* next local heap space location */
     size_t heapSize;                /* size of heap space in bytes */

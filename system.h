@@ -23,7 +23,6 @@ typedef struct {
     GetLineHandler *getLine;    /* function to get a line of input */
     void *getLineCookie;        /* cookie for the getLine function */
     uint8_t *freeSpace;         /* base of free space */
-    uint8_t *freeMark;          /* top of permanently allocated storage */
     uint8_t *freeNext;          /* next free space available */
     uint8_t *freeTop;           /* top of free space */
     char lineBuf[MAXLINE];      /* current input line */
