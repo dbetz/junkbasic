@@ -36,16 +36,22 @@ void VM_flush(void)
 
 int VM_getchar(void)
 {
+#ifdef LINE_EDIT
     int ch = getchar();
     if (ch == '\r')
         ch = '\n';
     return ch;
+#else
+    return getchar();
+#endif
 }
 
 void VM_putchar(int ch)
 {
+#ifdef LINE_EDIT
     if (ch == '\n')
         putchar('\r');
+#endif
     putchar(ch);
 }
 
