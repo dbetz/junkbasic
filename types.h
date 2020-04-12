@@ -91,6 +91,8 @@ typedef uint32_t VMUVALUE;
 #define INT_FMT     "%d"
 #define UINT_FMT    "%u"
 
+#define LINE_EDIT
+
 //#define ANSI_FILE_IO
 
 #else
