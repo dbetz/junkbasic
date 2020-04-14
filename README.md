@@ -12,128 +12,138 @@ SAVE filename
 LIST
 RUN
 
-Language syntax:
+# Language syntax
 
 REM comment
 
-FUNCTION function-name
-FUNCTION function-name ( arg [ , arg ]... )
+## Function Definitions
 
-END FUNCTION
-SUB subroutine-name
-SUB subroutine-name  ( arg [ , arg ]... )
+    FUNCTION function-name
+    FUNCTION function-name ( arg [ , arg ]... )
 
-END SUB
+    END FUNCTION
 
-RETURN expr
+## Subroutine Defintions
 
-dim-statement:
+    SUB subroutine-name
+    SUB subroutine-name  ( arg [ , arg ]... )
 
-    DIM variable-def [ , variable-def ]...
+    END SUB
+
+## Variable Declarations
+
+    dim-statement:
+
+        DIM variable-def [ , variable-def ]...
     
-variable-def:
+    variable-def:
 
-    var [ scalar-initializer ]
-    var '[' size ']' [ array-initializer ]
+        var [ scalar-initializer ]
+        var '[' size ']' [ array-initializer ]
     
-scalar-initializer:
+    scalar-initializer:
 
-    = constant-expr
+        = constant-expr
     
-array-initializer:
+    array-initializer:
 
-    = { constant-expr [ , constant-expr ]... }
+        = { constant-expr [ , constant-expr ]... }
 
-[LET] var = expr
+## Control Statements
 
-IF expr
+    RETURN expr
 
-ELSE IF expr
+    [LET] var = expr
 
-ELSE
+    IF expr
 
-END IF
+    ELSE IF expr
 
-END
+    ELSE
 
-FOR var = start TO end [ STEP inc ]
+    END IF
 
-NEXT var
+    END
 
-DO
-DO WHILE expr
-DO UNTIL expr
+    FOR var = start TO end [ STEP inc ]
 
-LOOP
-LOOP WHILE expr
-LOOP UNTIL expr
+    NEXT var
 
-label:
+    DO
+    DO WHILE expr
+    DO UNTIL expr
 
-GOTO label
+    LOOP
+    LOOP WHILE expr
+    LOOP UNTIL expr
+
+    label:
+
+    GOTO label
 
 PRINT expr [ ;|, expr ]... [ ; ]
 
-expr AND expr
-expr OR expr
+## Expressions
 
-expr ^ expr
-expr | expr
-expr & expr
+    expr AND expr
+    expr OR expr
 
-expr = expr
-expr <> expr
+    expr ^ expr
+    expr | expr
+    expr & expr
 
-expr < expr
-expr <= expr
-expr >= expr
-expr > expr
+    expr = expr
+    expr <> expr
 
-expr << expr
-expr >> expr
+    expr < expr
+    expr <= expr
+    expr >= expr
+    expr > expr
 
-expr + expr
-expr - expr
-expr * expr
-expr / expr
-expr MOD expr
+    expr << expr
+    expr >> expr
 
-- expr
-~ expr
-NOT expr
+    expr + expr
+    expr - expr
+    expr * expr
+    expr / expr
+    expr MOD expr
 
-function ( arg [, arg ]... )
-array [ index ]
+    - expr
+    ~ expr
+    NOT expr
 
-(expr)
-var
-integer
-"string"
+    function ( arg [, arg ]... )
+    array [ index ]
 
-Built-in variables:
+    (expr)
+    var
+    integer
+    "string"
 
-clkfreq
-par
-cnt
-ina
-inb
-outa
-outb
-dira
-dirb
-ctra
-ctrb
-frqa
-frqb
-phsa
-phsb
-vcfg
-vscl
+# Built-in variables
 
-Built-in Functions:
+    clkfreq
+    par
+    cnt
+    ina
+    inb
+    outa
+    outb
+    dira
+    dirb
+    ctra
+    ctrb
+    frqa
+    frqb
+    phsa
+    phsb
+    vcfg
+    vscl
 
-waitcnt(target)
-waitpeq(state, mask)
-waitpne(state, mask)
+# Built-in Functions
 
+    waitcnt(target)
+    waitpeq(state, mask)
+    waitpne(state, mask)
 
