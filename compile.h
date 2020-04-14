@@ -265,6 +265,13 @@ struct NodeListEntry {
     NodeListEntry *next;
 };
 
+/* code generator context */
+typedef struct {
+    uint8_t *cptr;                  /* generate - next available code staging buffer position */
+    uint8_t *ctop;                  /* generate - top of code staging buffer */
+    uint8_t *codeBuf;               /* generate - code staging buffer */
+} GenerateContext;
+
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
 void Compile(ParseContext *c);
@@ -308,6 +315,10 @@ Symbol *FindArgument(ParseContext *c, const char *name);
 Symbol *FindLocal(ParseContext *c, const char *name);
 int IsConstant(Symbol *symbol);
 void DumpSymbols(SymbolTable *table, const char *tag);
+
+/* generate.c */
+GenerateContext *InitGenerateContext(ParseContext *c);
+void Generate(GenerateContext *c, ParseTreeNode *node);
 
 #endif
 

@@ -32,6 +32,7 @@ static void ParseLoop(ParseContext *c);
 static void ParseLoopWhile(ParseContext *c);
 static void ParseLoopUntil(ParseContext *c);
 static void ParseReturn(ParseContext *c);
+static void ParsePrint(ParseContext *c);
 static void ParseEnd(ParseContext *c);
 static ParseTreeNode *ParseExpr2(ParseContext *c);
 static ParseTreeNode *ParseExpr3(ParseContext *c);
@@ -54,6 +55,10 @@ static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node);
 static void PopBlock(ParseContext *c);
 static void PrintNodeList(NodeListEntry *entry, int indent);
 
+static void EnterBuiltInSymbols(ParseContext *c);
+static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr);
+static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr);
+
 /* InitParseContext - parse a statement */
 ParseContext *InitParseContext(System *sys)
 {
@@ -63,6 +68,28 @@ ParseContext *InitParseContext(System *sys)
         c->sys = sys;    
     }
     return c;
+}
+
+/* EnterBuiltInSymbols - enter the built-in symbols */
+static void EnterBuiltInSymbols(ParseContext *c)
+{
+    EnterBuiltInFunction(c, "printInt",  (VMVALUE)0);
+    EnterBuiltInFunction(c, "printStr",  (VMVALUE)0);
+    EnterBuiltInFunction(c, "printNL",  (VMVALUE)0);
+}
+
+/* EnterBuiltInVariable - enter a built-in variable */
+static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr)
+{
+    Symbol *sym;
+    sym = AddGlobal(c, name, SC_VARIABLE,  addr);
+}
+
+/* EnterBuiltInFunction - enter a built-in function */
+static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr)
+{
+    Symbol *sym;
+    sym = AddGlobal(c, name, SC_CONSTANT,  addr);
 }
 
 /* Compile - parse a program */
@@ -92,6 +119,9 @@ void Compile(ParseContext *c)
     
     /* initialize the global symbol table */
     InitSymbolTable(&c->globals);
+    
+    /* enter the built-in symbols */
+    EnterBuiltInSymbols(c);
 
     /* initialize scanner */
     InitScan(c);
@@ -166,6 +196,9 @@ void ParseStatement(ParseContext *c, int tkn)
         break;
     case T_RETURN:
         ParseReturn(c);
+        break;
+    case T_PRINT:
+        ParsePrint(c);
         break;
     case T_END:
         ParseEnd(c);
@@ -693,6 +726,96 @@ static void ParseReturn(ParseContext *c)
     
     /* add the statement to the current function */
     AddNodeToList(c, &c->bptr->pNextStatement, node);
+}
+
+/* BuildHandlerFunctionCall - compile a call to a runtime print function */
+static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr)
+{
+    ParseTreeNode *functionNode, *callNode, *node;
+    NodeListEntry *actual;
+    Type *functionType;
+    Symbol *symbol;
+
+    if (!(symbol = FindGlobal(c, name)))
+        ParseError(c, "print helper not defined: %s", name);
+        
+    functionNode = NewParseTreeNode(c, NodeTypeGlobalRef);
+    functionNode->u.symbolRef.symbol = symbol;
+    
+    /* intialize the function call node */
+    callNode = NewParseTreeNode(c, NodeTypeFunctionCall);
+    callNode->u.functionCall.fcn = functionNode;
+    callNode->u.functionCall.args = NULL;
+    
+    actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    actual->node = devExpr;
+    actual->next = callNode->u.functionCall.args;
+    callNode->u.functionCall.args = actual;
+    ++callNode->u.functionCall.argc;
+
+    if (expr) {
+        actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        actual->node = expr;
+        actual->next = callNode->u.functionCall.args;
+        callNode->u.functionCall.args = actual;
+        ++callNode->u.functionCall.argc;
+    }
+
+    /* build the function call statement */
+    node = NewParseTreeNode(c, NodeTypeCallStatement);
+    node->u.callStatement.expr = callNode;
+    
+    /* return the function call statement */
+    return node;
+}
+
+
+/* ParsePrint - handle the 'PRINT' statement */
+static void ParsePrint(ParseContext *c)
+{
+    ParseTreeNode *devExpr, *expr;
+    int needNewline = VMTRUE;
+    int tkn;
+
+    /* check for file output */
+    if ((tkn = GetToken(c)) == '#') {
+        devExpr = ParseExpr(c);
+        FRequire(c, ',');
+    }
+    
+    /* handle terminal output */
+    else {
+        SaveToken(c, tkn);
+        devExpr = NewParseTreeNode(c, NodeTypeIntegerLit);
+        devExpr->u.integerLit.value = 0;
+    }
+    
+    while ((tkn = GetToken(c)) != T_EOL) {
+        switch (tkn) {
+        case ',':
+            needNewline = VMFALSE;
+            AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printTab", devExpr, NULL));
+            break;
+        case ';':
+            needNewline = VMFALSE;
+            break;
+        case T_STRING:
+            needNewline = VMTRUE;
+            expr = NewParseTreeNode(c, NodeTypeStringLit);
+            expr->u.stringLit.string = AddString(c, c->token);
+            AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printStr", devExpr, expr));
+            break;
+        default:
+            needNewline = VMTRUE;
+            SaveToken(c, tkn);
+            expr = ParseExpr(c);
+            AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printInt", devExpr, expr));
+            break;
+        }
+    }
+
+    if (needNewline)
+        AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printNL", devExpr, NULL));
 }
 
 /* ParseEnd - parse the 'END' statement */

@@ -1,3 +1,8 @@
+*.pasm
+*.p2asm
+*.p2
+junkbasic
+
 # Prerequisites
 *.d
 

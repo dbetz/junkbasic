@@ -62,7 +62,8 @@
 #define OP_TRAP         0x28    /* trap to handler */
 #define OP_RETURNZ      0x29
 #define OP_PUSHJ        0X2a
-#define OP_CLEAN        0x2b
+#define OP_POPJ         0X2b
+#define OP_CLEAN        0x2c
 
 /* VM trap codes */
 enum {

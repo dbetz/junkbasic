@@ -7,8 +7,6 @@
 #include <string.h>
 #include "compile.h"
 
-typedef struct GenerateContext GenerateContext;
-
 /* partial value */
 typedef struct PVAL PVAL;
 
@@ -19,6 +17,7 @@ typedef enum {
 } PValOp;
 
 typedef void GenFcn(GenerateContext *c, PValOp op, PVAL *pv);
+
 #define GEN_NULL    ((GenFcn *)0)
 
 /* partial value structure */
@@ -29,12 +28,6 @@ struct PVAL {
         String *str;
         VMVALUE val;
     } u;
-};
-
-struct GenerateContext {
-    uint8_t *cptr;                  /* generate - next available code staging buffer position */
-    uint8_t *ctop;                  /* generate - top of code staging buffer */
-    uint8_t *codeBuf;               /* generate - code staging buffer */
 };
 
 /* generate.c */
@@ -71,6 +64,18 @@ static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
+
+/* InitGenerateContext - initialize a generate context */
+GenerateContext *InitGenerateContext(ParseContext *c)
+{
+    GenerateContext *g;
+    if (!(g = (GenerateContext *)LocalAlloc(c, sizeof(GenerateContext))))
+        return NULL;
+    g->codeBuf = c->nextLocal;
+    g->cptr = g->codeBuf;
+    g->ctop = c->nextGlobal;
+    return g;
+}
 
 /* Generate - generate code for a function */
 void Generate(GenerateContext *c, ParseTreeNode *node)

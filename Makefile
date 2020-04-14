@@ -10,6 +10,8 @@ parse.c \
 scan.c \
 symbols.c \
 system.c \
+vmdebug.c \
+vmint.c \
 osint_posix.c
 
 HDRS=\
@@ -33,4 +35,4 @@ run-p2:		$(TARGET).p2
 	loadp2 -b 230400 $(TARGET).p2 -t
     
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) *.pasm *.p2asm
