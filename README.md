@@ -1,36 +1,39 @@
 # junkbasic
+
 Trying for a small self-hosted BASIC native code compiler for the P2
 
-Editor commands:
+## Editor Commands
 
-NEW
-NEW filename
-LOAD
-LOAD filename
-SAVE
-SAVE filename
-LIST
-RUN
+    NEW
+    NEW filename
+    LOAD
+    LOAD filename
+    SAVE
+    SAVE filename
+    LIST
+    RUN
 
-# Language syntax
+## Language syntax
 
-REM comment
+### Comments
 
-## Function Definitions
+    REM comment
+
+### Function Definitions
 
     FUNCTION function-name
     FUNCTION function-name ( arg [ , arg ]... )
 
     END FUNCTION
 
-## Subroutine Defintions
+### Subroutine Defintions
 
     SUB subroutine-name
     SUB subroutine-name  ( arg [ , arg ]... )
 
     END SUB
 
-## Variable Declarations
+### Variable Declarations
 
     dim-statement:
 
@@ -49,7 +52,7 @@ REM comment
 
         = { constant-expr [ , constant-expr ]... }
 
-## Control Statements
+### Control Statements
 
     RETURN expr
 
@@ -81,9 +84,11 @@ REM comment
 
     GOTO label
 
-PRINT expr [ ;|, expr ]... [ ; ]
+### Output Statements
 
-## Expressions
+    PRINT expr [ ;|, expr ]... [ ; ]
+
+### Expressions
 
     expr AND expr
     expr OR expr
@@ -121,7 +126,7 @@ PRINT expr [ ;|, expr ]... [ ; ]
     integer
     "string"
 
-# Built-in variables
+## Built-in Variables
 
     clkfreq
     par
@@ -141,7 +146,7 @@ PRINT expr [ ;|, expr ]... [ ; ]
     vcfg
     vscl
 
-# Built-in Functions
+## Built-in Functions
 
     waitcnt(target)
     waitpeq(state, mask)
