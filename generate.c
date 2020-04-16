@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include "compile.h"
+#include "vmdebug.h"
 
 /* partial value */
 typedef struct PVAL PVAL;
@@ -66,14 +67,14 @@ static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
 /* InitGenerateContext - initialize a generate context */
-GenerateContext *InitGenerateContext(ParseContext *c)
+GenerateContext *InitGenerateContext(uint8_t *freeSpace, size_t freeSize)
 {
-    GenerateContext *g;
-    if (!(g = (GenerateContext *)LocalAlloc(c, sizeof(GenerateContext))))
+    GenerateContext *g = (GenerateContext *)freeSpace;
+    if (freeSize < sizeof(GenerateContext))
         return NULL;
-    g->codeBuf = c->nextLocal;
+    g->codeBuf = freeSpace + sizeof(GenerateContext);
     g->cptr = g->codeBuf;
-    g->ctop = c->nextGlobal;
+    g->ctop = freeSpace + freeSize;
     return g;
 }
 
@@ -199,6 +200,7 @@ void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 /* code_function_definition - generate code for a function definition */
 static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
 {
+    uint8_t *base = c->cptr;
     putcbyte(c, OP_FRAME);
     putcbyte(c, F_SIZE + node->u.functionDefinition.localOffset);
     code_statement_list(c, node->u.functionDefinition.bodyStatements);
@@ -206,6 +208,7 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
         putcbyte(c, OP_RETURNZ);
     else
         putcbyte(c, OP_HALT);
+    DecodeFunction(0, base, c->cptr - base);
 }
 
 /* code_if_statement - generate code for an IF statement */
@@ -373,27 +376,8 @@ static void code_call(GenerateContext *c, ParseTreeNode *expr)
 /* code_symbolRef - code a global reference */
 static void code_symbolRef(GenerateContext *c, Symbol *sym)
 {
-#if 0
-    VMUVALUE offset = sym->v.variable.offset;
     putcbyte(c, OP_LIT);
-    if (offset == UNDEF_VALUE)
-        putcword(c, AddLocalSymbolFixup(c, sym, codeaddr(c)));
-    else {
-        switch (sym->storageClass) {
-        case SC_CONSTANT: // function text offset
-        case SC_GLOBAL:
-            putcword(c, sym->section ? sym->section->base + offset : offset);
-            break;
-        case SC_COG:
-        case SC_HUB:
-            putcword(c, offset);
-            break;
-        default:
-            GenerateError(c, "unexpected storage class");
-            break;
-        }
-    }
-#endif
+    putcword(c, sym->offset);
 }
 
 /* code_arrayref - code an array reference */

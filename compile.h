@@ -117,6 +117,7 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
+    int offset;
     int type;
     union {
         VMVALUE value;
@@ -317,7 +318,7 @@ int IsConstant(Symbol *symbol);
 void DumpSymbols(SymbolTable *table, const char *tag);
 
 /* generate.c */
-GenerateContext *InitGenerateContext(ParseContext *c);
+GenerateContext *InitGenerateContext(uint8_t *freeSpace, size_t freeSize);
 void Generate(GenerateContext *c, ParseTreeNode *node);
 
 #endif

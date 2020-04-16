@@ -102,8 +102,8 @@ void Compile(ParseContext *c)
         return;
 
     /* use the rest of the system free space for the compiler heap */
-    c->nextGlobal = sys->freeNext;
-    c->nextLocal = sys->freeTop;
+    c->nextLocal = sys->freeNext;
+    c->nextGlobal = sys->freeTop;
     c->heapSize = sys->freeTop - sys->freeNext;
     c->maxHeapUsed = 0;
     
@@ -136,6 +136,13 @@ void Compile(ParseContext *c)
     DumpSymbols(&c->globals, "Globals");
     
     PrintNode(c->mainFunction, 0);
+    
+    {
+        GenerateContext *g = InitGenerateContext(c->nextLocal, c->nextGlobal - c->nextLocal);
+        if (g) {
+            Generate(g, c->mainFunction);
+        }
+    }
 }
 
 /* ParseStatement - parse a statement */
@@ -1477,26 +1484,26 @@ String *AddString(ParseContext *c, const char *value)
 /* GlobalAlloc - allocate memory from the global heap */
 void *GlobalAlloc(ParseContext *c, size_t size)
 {
-    uint8_t *p = c->nextGlobal;
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (p + size > c->nextLocal)
+    if (c->nextGlobal - size < c->nextLocal)
         ParseError(c, "insufficient memory");
-    c->nextGlobal += size;
-    if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextLocal - c->nextGlobal);
-    return p;
+    c->nextGlobal -= size;
+    if (c->heapSize - (c->nextGlobal - c->nextLocal) > c->maxHeapUsed)
+        c->maxHeapUsed = c->heapSize - (c->nextGlobal - c->nextLocal);
+    return c->nextGlobal;
 }
 
 /* LocalAlloc - allocate memory from the local heap */
 void *LocalAlloc(ParseContext *c, size_t size)
 {
+    uint8_t *p = c->nextLocal;
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (c->nextLocal - size < c->nextGlobal)
+    if (p + size > c->nextGlobal)
         ParseError(c, "insufficient memory");
-    c->nextLocal -= size;
-    if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextLocal - c->nextGlobal);
-    return c->nextLocal;
+    c->nextLocal += size;
+    if (c->heapSize - (c->nextGlobal - c->nextLocal) > c->maxHeapUsed)
+        c->maxHeapUsed = c->heapSize - (c->nextGlobal - c->nextLocal);
+    return p;
 }
 
 void PrintNode(ParseTreeNode *node, int indent)
