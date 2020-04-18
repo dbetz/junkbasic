@@ -63,6 +63,8 @@ void VM_putchar(int ch)
     putchar(ch);
 }
 
+#ifdef LOAD_SAVE
+
 int VM_opendir(const char *path, VMDIR *dir)
 {
     if (!(dir->dirp = opendir(path)))
@@ -89,7 +91,10 @@ void VM_closedir(VMDIR *dir)
     closedir(dir->dirp);
 }
 
+#endif
+
 #ifdef LINE_EDIT
+
 static char *EditLine(char *buf, int size, void *cookie)
 {
     int i = 0;
@@ -118,4 +123,5 @@ static char *EditLine(char *buf, int size, void *cookie)
     buf[i] = '\0';
     return buf;
 }
+
 #endif
