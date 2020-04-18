@@ -119,15 +119,13 @@ typedef FILE VMFILE;
 #define VM_fgets	fgets
 #define VM_fputs	fputs
 
-#if 0
-struct VMDIR {
+typedef struct {
     DIR *dirp;
-};
+} VMDIR;
 
-struct VMDIRENT {
+typedef struct {
     char name[FILENAME_MAX];
-};
-#endif
+} VMDIRENT;
 
 #endif // ANSI_FILE_IO
 

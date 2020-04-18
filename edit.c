@@ -14,6 +14,7 @@ static void DoRun(EditBuf *buf);
 #ifdef LOAD_SAVE
 static void DoLoad(EditBuf *buf);
 static void DoSave(EditBuf *buf);
+static void DoCat(EditBuf *buf);
 #endif
 
 /* command table */
@@ -27,6 +28,7 @@ static struct {
 #ifdef LOAD_SAVE
 {   "LOAD",     DoLoad  },
 {   "SAVE",     DoSave  },
+{   "CAT",      DoCat   },
 #endif
 {   NULL,       NULL    }
 };
@@ -153,6 +155,10 @@ static int SetProgramName(EditBuf *buf)
     if ((name = NextToken(buf->sys)) != NULL) {
         strncpy(buf->programName, name, FILENAME_MAX - 1);
         buf->programName[FILENAME_MAX - 1] = '\0';
+        if (!strchr(buf->programName, '.')) {
+            if (strlen(buf->programName) < FILENAME_MAX - 5)
+                strcat(buf->programName, ".bas");
+        }
     }
     return buf->programName[0] != '\0';
 }
@@ -214,6 +220,20 @@ static void DoSave(EditBuf *buf)
             VM_fputs(sys->lineBuf, fp);
         }
         VM_fclose(fp);
+    }
+}
+
+static void DoCat(EditBuf *buf)
+{
+    VMDIRENT entry;
+    VMDIR dir;    
+    if (VM_opendir(".", &dir) == 0) {
+        while (VM_readdir(&dir, &entry) == 0) {
+            int len = strlen(entry.name);
+            if (len >= 4 && strcasecmp(&entry.name[len - 4], ".bas") == 0)
+                VM_printf("  %s\n", entry.name);
+        }
+        VM_closedir(&dir);
     }
 }
 

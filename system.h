@@ -44,4 +44,10 @@ void VM_vprintf(const char *fmt, va_list ap);
 void VM_putchar(int ch);
 void VM_flush(void);
 
+#ifdef LOAD_SAVE
+int VM_opendir(const char *path, VMDIR *dir);
+int VM_readdir(VMDIR *dir, VMDIRENT *entry);
+void VM_closedir(VMDIR *dir);
+#endif
+
 #endif
