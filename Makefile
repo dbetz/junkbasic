@@ -32,7 +32,7 @@ run:	$(TARGET)
 p2:		$(TARGET).p2
 
 run-p2:		$(TARGET).p2
-	loadp2 -b 230400 -9 $(TARGET).p2 -t
+	loadp2 -b 230400 -9 . $(TARGET).p2 -t
     
 clean:
 	rm -f $(TARGET) *.pasm *.p2asm
