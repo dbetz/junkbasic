@@ -36,8 +36,6 @@ struct Interpreter {
     VMVALUE *fp;
     VMVALUE *sp;
     VMVALUE tos;
-    int argc;
-    int linePos;
 };
 
 /* stack frame offsets */

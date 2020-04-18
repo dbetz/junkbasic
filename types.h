@@ -93,7 +93,9 @@ typedef uint32_t VMUVALUE;
 
 #define LINE_EDIT
 
-//#define ANSI_FILE_IO
+#define ANSI_FILE_IO
+
+#define FILENAME_MAX 32
 
 #else
 
@@ -119,6 +121,7 @@ typedef FILE VMFILE;
 #define VM_fgets	fgets
 #define VM_fputs	fputs
 
+#if 0
 struct VMDIR {
     DIR *dirp;
 };
@@ -126,6 +129,7 @@ struct VMDIR {
 struct VMDIRENT {
     char name[FILENAME_MAX];
 };
+#endif
 
 #endif // ANSI_FILE_IO
 

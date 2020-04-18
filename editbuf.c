@@ -8,6 +8,7 @@ EditBuf *BufInit(System *sys, uint8_t *space, size_t size)
     EditBuf *buf = (EditBuf *)space;
     if (size < sizeof(EditBuf))
         return NULL;
+    memset(buf, 0, sizeof(EditBuf));
     buf->sys = sys;
     buf->bufferMax = space + size;
     buf->bufferTop = buf->buffer;

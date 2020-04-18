@@ -22,8 +22,6 @@ typedef struct Symbol Symbol;
 typedef struct ParseTreeNode ParseTreeNode;
 typedef struct NodeListEntry NodeListEntry;
 
-typedef int Type;
-
 /* lexical tokens */
 enum {
     T_NONE,
@@ -106,6 +104,16 @@ typedef enum {
     SC_VARIABLE
 } StorageClass;
 
+/* symbol types */
+typedef enum {
+    TYPE_INTEGER,
+    TYPE_BYTE,
+    TYPE_STRING,
+    TYPE_ARRAY,
+    TYPE_POINTER,
+    TYPE_FUNCTION
+} Type;
+
 /* symbol table */
 struct SymbolTable {
     Symbol *head;
@@ -117,8 +125,9 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
-    int offset;
-    int type;
+    Type type;
+    VMVALUE offset;
+    int placed;
     union {
         VMVALUE value;
         String *string;
@@ -140,7 +149,7 @@ typedef struct {
     int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
     char token[MAXTOKEN];           /* scan - current token string */
-    VMVALUE value;                  /* scan - current token integer value */
+    VMVALUE tokenValue;             /* scan - current token integer value */
     int inComment;                  /* scan - inside of a slash/star comment */
     SymbolTable globals;            /* parse - global variables and constants */
     String *strings;                /* parse - string constants */
@@ -150,16 +159,6 @@ typedef struct {
     Block *bptr;                    /* parse - current block */
     Block *btop;                    /* parse - top of block stack */
 } ParseContext;
-
-/* types */
-typedef enum {
-    TYPE_INTEGER,
-    TYPE_BYTE,
-    TYPE_STRING,
-    TYPE_ARRAY,
-    TYPE_POINTER,
-    TYPE_FUNCTION
-} TypeID;
 
 /* parse tree node types */
 enum {
@@ -267,11 +266,7 @@ struct NodeListEntry {
 };
 
 /* code generator context */
-typedef struct {
-    uint8_t *cptr;                  /* generate - next available code staging buffer position */
-    uint8_t *ctop;                  /* generate - top of code staging buffer */
-    uint8_t *codeBuf;               /* generate - code staging buffer */
-} GenerateContext;
+typedef struct GenerateContext GenerateContext;
 
 /* parse.c */
 ParseContext *InitParseContext(System *sys);

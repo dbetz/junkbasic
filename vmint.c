@@ -55,7 +55,6 @@ int Execute(Interpreter *i, ImageHdr *image)
     /* initialize */    
     i->pc = (uint8_t *)MapAddress(i, i->image->mainCode);
     i->sp = i->fp = i->stackTop;
-    i->linePos = 0;
 
     if (setjmp(i->errorTarget))
         return VMFALSE;
@@ -328,10 +327,6 @@ static void DoTrap(Interpreter *i, int op)
 static void PrintC(Interpreter *i, int ch)
 {
     VM_putchar(ch);
-    if (ch == '\n')
-        i->linePos = 0;
-    else
-        ++i->linePos;
 }
 
 void ShowStack(Interpreter *i)

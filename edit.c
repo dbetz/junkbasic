@@ -5,12 +5,16 @@
 #include "edit.h"
 #include "compile.h"
 
-#define MAXTOKEN    32
+#define MAXTOKEN        32
 
 /* command handlers */
 static void DoNew(EditBuf *buf);
 static void DoList(EditBuf *buf);
 static void DoRun(EditBuf *buf);
+#ifdef LOAD_SAVE
+static void DoLoad(EditBuf *buf);
+static void DoSave(EditBuf *buf);
+#endif
 
 /* command table */
 static struct {
@@ -20,6 +24,10 @@ static struct {
 {   "NEW",      DoNew   },
 {   "LIST",     DoList  },
 {   "RUN",      DoRun   },
+#ifdef LOAD_SAVE
+{   "LOAD",     DoLoad  },
+{   "SAVE",     DoSave  },
+#endif
 {   NULL,       NULL    }
 };
 
@@ -121,6 +129,80 @@ static void DoRun(EditBuf *buf)
     /* grab the rest of the system memory again for the edit buffer */
     ResetToMark(sys, buf->bufferMax);
 }
+
+#ifdef LOAD_SAVE
+
+static int SetProgramName(EditBuf *buf)
+{
+    char *name;
+    if ((name = NextToken(buf->sys)) != NULL) {
+        strncpy(buf->programName, name, FILENAME_MAX - 1);
+        buf->programName[FILENAME_MAX - 1] = '\0';
+    }
+    return buf->programName[0] != '\0';
+}
+
+static void DoLoad(EditBuf *buf)
+{
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(buf)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* load the program */
+    if (!(fp = VM_fopen(buf->programName, "r")))
+        VM_printf("error loading '%s'\n", buf->programName);
+    else {
+        System *sys = buf->sys;
+        VM_printf("Loading '%s'\n", buf->programName);
+        BufNew(buf);
+        while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
+            int lineNumber;
+            char *token;
+            sys->linePtr = sys->lineBuf;
+            if ((token = NextToken(sys)) != NULL) {
+                if (ParseNumber(token, &lineNumber))
+                    BufAddLineN(buf, lineNumber, sys->linePtr);
+                else
+                    VM_printf("expecting a line number: %s\n", token);
+            }
+        }
+        VM_fclose(fp);
+    }
+}
+
+static void DoSave(EditBuf *buf)
+{
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(buf)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* save the program */
+    if (!(fp = VM_fopen(buf->programName, "w")))
+        VM_printf("error saving '%s'\n", buf->programName);
+    else {
+        System *sys = buf->sys;
+        int lineNumber;
+        VM_printf("Saving '%s'\n", buf->programName);
+        BufSeekN(buf, 0);
+        while (BufGetLine(buf, &lineNumber, sys->lineBuf)) {
+            char buf[32];
+            sprintf(buf, "%d", lineNumber);
+            VM_fputs(buf, fp);
+            VM_fputs(sys->lineBuf, fp);
+        }
+        VM_fclose(fp);
+    }
+}
+
+#endif
 
 static char *NextToken(System *sys)
 {

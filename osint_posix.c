@@ -6,6 +6,10 @@
 #include "compile.h"
 #include "system.h"
 
+#ifdef PROPELLER
+#include <sys/vfs.h>
+#endif
+
 #define WORKSPACE_SIZE  (64 * 1024)
 
 uint8_t workspace[WORKSPACE_SIZE];
@@ -18,6 +22,10 @@ int main(int argc, char *argv[])
 {
     System *sys = InitSystem(workspace, sizeof(workspace));
     if (sys) {
+#ifdef PROPELLER
+    _setrootvfs(_vfs_open_host());  // to access host files
+    //_setrootvfs(_vfs_open_sdcard()); // to access files on SD card
+#endif
 #ifdef LINE_EDIT
         sys->getLine = EditLine;
 #else

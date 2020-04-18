@@ -406,7 +406,7 @@ static int NumberToken(ParseContext *c, int ch)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (VMVALUE)atol(c->token);
+    c->tokenValue = (VMVALUE)atol(c->token);
     
     /* return the token */
     return T_NUMBER;
@@ -429,7 +429,7 @@ static int HexNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (VMVALUE)strtoul(c->token, NULL, 16);
+    c->tokenValue = (VMVALUE)strtoul(c->token, NULL, 16);
     
     /* return the token */
     return T_NUMBER;
@@ -452,7 +452,7 @@ static int BinaryNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (VMVALUE)strtoul(c->token, NULL, 2);
+    c->tokenValue = (VMVALUE)strtoul(c->token, NULL, 2);
     
     /* return the token */
     return T_NUMBER;
@@ -489,7 +489,7 @@ static int CharToken(ParseContext *c)
         ParseError(c,"Expecting a closing single quote");
     c->token[0] = ch;
     c->token[1] = '\0';
-    c->value = ch;
+    c->tokenValue = ch;
     return T_NUMBER;
 }
 

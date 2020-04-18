@@ -11,6 +11,9 @@ typedef struct {
 
 typedef struct {
     System *sys;
+#ifdef LOAD_SAVE
+    char programName[FILENAME_MAX];
+#endif
     uint8_t *bufferMax;
     uint8_t *bufferTop;
     Line *currentLine;

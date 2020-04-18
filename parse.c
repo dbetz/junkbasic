@@ -740,7 +740,6 @@ static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNod
 {
     ParseTreeNode *functionNode, *callNode, *node;
     NodeListEntry *actual;
-    Type *functionType;
     Symbol *symbol;
 
     if (!(symbol = FindGlobal(c, name)))
@@ -1247,7 +1246,7 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
         break;
     case T_NUMBER:
         node = NewParseTreeNode(c, NodeTypeIntegerLit);
-        node->u.integerLit.value = c->value;
+        node->u.integerLit.value = c->tokenValue;
         break;
     case T_STRING:
         node = NewParseTreeNode(c, NodeTypeStringLit);

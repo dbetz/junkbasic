@@ -21,10 +21,10 @@ system.h \
 types.h
 
 $(TARGET):	$(SRCS) $(HDRS) Makefile
-	$(CC) -DMAC -o $@ $(SRCS)
+	$(CC) -DMAC -DLOAD_SAVE -o $@ $(SRCS)
 
 $(TARGET).p2:	$(SRCS) $(HDRS) Makefile
-	$(P2CC) -DPROPELLER -2b -o $@ $(SRCS)
+	$(P2CC) -DPROPELLER -DLOAD_SAVE -2b -o $@ $(SRCS)
 
 run:	$(TARGET)
 	./junkbasic
@@ -32,7 +32,7 @@ run:	$(TARGET)
 p2:		$(TARGET).p2
 
 run-p2:		$(TARGET).p2
-	loadp2 -b 230400 $(TARGET).p2 -t
+	loadp2 -b 230400 -9 $(TARGET).p2 -t
     
 clean:
 	rm -f $(TARGET) *.pasm *.p2asm

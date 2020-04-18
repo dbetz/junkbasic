@@ -8,6 +8,13 @@
 #include "compile.h"
 #include "vmdebug.h"
 
+/* code generator context */
+struct GenerateContext {
+    uint8_t *cptr;                  /* next available code staging buffer position */
+    uint8_t *ctop;                  /* top of code staging buffer */
+    uint8_t *codeBuf;               /* code staging buffer */
+};
+
 /* partial value */
 typedef struct PVAL PVAL;
 
@@ -31,18 +38,6 @@ struct PVAL {
     } u;
 };
 
-/* generate.c */
-void Generate(GenerateContext *c, ParseTreeNode *expr);
-void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
-void code_global(GenerateContext *c, PValOp fcn, PVAL *pv);
-void code_local(GenerateContext *c, PValOp fcn, PVAL *pv);
-VMUVALUE codeaddr(GenerateContext *c);
-VMUVALUE putcbyte(GenerateContext *c, int b);
-VMUVALUE putcword(GenerateContext *c, VMVALUE w);
-VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
-void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
-void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
-
 /* local function prototypes */
 static void code_lvalue(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_rvalue(GenerateContext *c, ParseTreeNode *expr);
@@ -62,7 +57,19 @@ static void code_call(GenerateContext *c, ParseTreeNode *expr);
 static void code_symbolRef(GenerateContext *c, Symbol *sym);
 static void code_arrayref(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv);
+static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
+static void code_global(GenerateContext *c, PValOp fcn, PVAL *pv);
+static void code_local(GenerateContext *c, PValOp fcn, PVAL *pv);
+static VMUVALUE codeaddr(GenerateContext *c);
+static VMUVALUE putcbyte(GenerateContext *c, int b);
+static VMUVALUE putcword(GenerateContext *c, VMVALUE w);
+static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
+static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
+static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
+static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
+static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
+static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size);
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
@@ -103,7 +110,7 @@ static void code_rvalue(GenerateContext *c, ParseTreeNode *expr)
 }
 
 /* code_expr - generate code for an expression parse tree */
-void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
+static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     VMVALUE ival;
     switch (expr->nodeType) {
@@ -390,7 +397,7 @@ static void code_arrayref(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 }
 
 /* code_global - compile a global variable reference */
-void code_global(GenerateContext *c, PValOp fcn, PVAL *pv)
+static void code_global(GenerateContext *c, PValOp fcn, PVAL *pv)
 {
     code_symbolRef(c, pv->u.sym);
     switch (fcn) {
@@ -404,7 +411,7 @@ void code_global(GenerateContext *c, PValOp fcn, PVAL *pv)
 }
 
 /* code_local - compile an local reference */
-void code_local(GenerateContext *c, PValOp fcn, PVAL *pv)
+static void code_local(GenerateContext *c, PValOp fcn, PVAL *pv)
 {
     switch (fcn) {
     case PV_LOAD:
@@ -432,13 +439,13 @@ static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv)
 }
 
 /* codeaddr - get the current code address (actually, offset) */
-VMUVALUE codeaddr(GenerateContext *c)
+static VMUVALUE codeaddr(GenerateContext *c)
 {
     return (VMUVALUE)(c->cptr - c->codeBuf);
 }
 
 /* putcbyte - put a code byte into the code buffer */
-VMUVALUE putcbyte(GenerateContext *c, int b)
+static VMUVALUE putcbyte(GenerateContext *c, int b)
 {
     VMUVALUE addr = codeaddr(c);
     if (c->cptr >= c->ctop)
@@ -448,7 +455,7 @@ VMUVALUE putcbyte(GenerateContext *c, int b)
 }
 
 /* putcword - put a code word into the code buffer */
-VMUVALUE putcword(GenerateContext *c, VMVALUE w)
+static VMUVALUE putcword(GenerateContext *c, VMVALUE w)
 {
     VMUVALUE addr = codeaddr(c);
     uint8_t *p;
@@ -465,7 +472,7 @@ VMUVALUE putcword(GenerateContext *c, VMVALUE w)
 }
 
 /* rd_cword - get a code word from the code buffer */
-VMVALUE rd_cword(GenerateContext *c, VMUVALUE off)
+static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off)
 {
     int cnt = sizeof(VMVALUE);
     VMVALUE w = 0;
@@ -475,7 +482,7 @@ VMVALUE rd_cword(GenerateContext *c, VMUVALUE off)
 }
 
 /* wr_cword - put a code word into the code buffer */
-void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w)
+static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w)
 {
     uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
     int cnt = sizeof(VMVALUE);
@@ -485,8 +492,18 @@ void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w)
     }
 }
 
+/* fixup - fixup a reference chain */
+static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
+{
+    while (chn != 0) {
+        int nxt = rd_cword(c, chn);
+        wr_cword(c, chn, val);
+        chn = nxt;
+    }
+}
+
 /* fixupbranch - fixup a reference chain */
-void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
+static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 {
     while (chn != 0) {
         VMUVALUE nxt = rd_cword(c, chn);
@@ -496,10 +513,64 @@ void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
     }
 }
 
+/* AddSymbolRef - add a reference to a symbol */
+VMVALUE AddSymbolRef(Symbol *sym, VMVALUE offset)
+{
+    VMVALUE link;
+
+    /* handle strings that have already been placed */
+    if (sym->placed)
+        return sym->offset;
+
+    /* add a new entry to the fixup list */
+    link = sym->offset;
+    sym->offset = offset;
+    
+    /* return the head of the fixup list */
+    return link;
+}
+
+/* PlaceSymbols - place any global symbols defined in the current function */
+static void PlaceSymbols(ParseContext *c)
+{
+#if 0
+    Symbol *sym;
+    for (sym = c->globals.head; sym != NULL; sym = sym->next) {
+        if (sym->fixups) {
+            VMVALUE offset = StoreVector(c, &sym->v.value, 1);
+            sym->placed = VMTRUE;
+            fixup(c, sym->offset, offset);
+            sym->offset = offset;
+            sym->fixups = 0;
+        }
+    }
+#endif
+}
+
 /* AddStringRef - add a reference to a string in the string table */
 static VMUVALUE AddStringRef(GenerateContext *c, String *str)
 {
     return 0;
+}
+
+/* StoreVector - store a VMVALUE vector */
+static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size)
+{
+#if 0
+    VMVALUE addr = (VMVALUE)image->free;
+    if (image->free + size > image->top)
+        return NIL;
+    memcpy(image->free, buf, size * sizeof(VMVALUE));
+    image->free += size;
+    return addr;
+#endif
+    return 0;
+}
+
+/* StoreBVector - store a byte vector */
+static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size)
+{
+    return StoreVector(c, (VMVALUE *)buf, GetObjSizeInWords(size));
 }
 
 /* GenerateError - report a code generation error */
