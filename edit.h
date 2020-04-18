@@ -23,13 +23,5 @@ typedef struct {
 /* edit.c */
 void EditWorkspace(System *sys);
 
-/* editbuf.c */
-EditBuf *BufInit(System *sys, uint8_t *space, size_t size);
-void BufNew(EditBuf *buf);
-int BufAddLineN(EditBuf *buf, int lineNumber, const char *text);
-int BufDeleteLineN(EditBuf *buf, int lineNumber);
-int BufSeekN(EditBuf *buf, int lineNumber);
-int BufGetLine(EditBuf *buf, int *pLineNumber, char *text);
-
 #endif
 

@@ -5,7 +5,6 @@ TARGET=junkbasic
 SRCS=\
 debug.c \
 edit.c \
-editbuf.c \
 generate.c \
 parse.c \
 scan.c \
