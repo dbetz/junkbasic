@@ -35,6 +35,9 @@ static struct {
 static char *NextToken(System *sys);
 static int ParseNumber(char *token, int *pValue);
 static int IsBlank(char *p);
+#ifdef LOAD_SAVE
+static int SetProgramName(EditBuf *buf);
+#endif
 
 void EditWorkspace(System *sys)
 {
@@ -80,6 +83,9 @@ void EditWorkspace(System *sys)
 
 static void DoNew(EditBuf *buf)
 {
+#ifdef LOAD_SAVE
+    SetProgramName(buf);
+#endif
     BufNew(buf);
 }
 
