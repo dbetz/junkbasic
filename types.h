@@ -95,8 +95,6 @@ typedef uint32_t VMUVALUE;
 
 #define ANSI_FILE_IO
 
-#define FILENAME_MAX 32
-
 #else
 
 #error Must define MAC, LINUX, or PROPELLER
