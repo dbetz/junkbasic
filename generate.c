@@ -11,7 +11,7 @@
 /* code generator context */
 struct GenerateContext {
     System *sys;
-    uint8_t *codeBuf;               /* code staging buffer */
+    uint8_t *codeBuf;
 };
 
 /* partial value */
@@ -66,6 +66,7 @@ static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
 static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
+static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
 static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
 static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size);
@@ -154,7 +155,7 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
-        //pv->u.val = expr->u.symbolRef.offset;
+        pv->u.val = expr->u.symbolRef.symbol->offset;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
@@ -383,7 +384,7 @@ static void code_call(GenerateContext *c, ParseTreeNode *expr)
 static void code_symbolRef(GenerateContext *c, Symbol *sym)
 {
     putcbyte(c, OP_LIT);
-    putcword(c, sym->offset);
+    putcword(c, AddSymbolRef(c, sym));
 }
 
 /* code_arrayref - code an array reference */
@@ -515,71 +516,54 @@ static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 }
 
 /* AddSymbolRef - add a reference to a symbol */
-VMVALUE AddSymbolRef(Symbol *sym, VMVALUE offset)
+static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym)
 {
-    VMVALUE link;
-
-    /* handle strings that have already been placed */
-    if (sym->placed)
-        return sym->offset;
-
-    /* add a new entry to the fixup list */
-    link = sym->offset;
-    sym->offset = offset;
-    
-    /* return the head of the fixup list */
-    return link;
-}
-
-/* PlaceSymbols - place any global symbols defined in the current function */
-static void PlaceSymbols(ParseContext *c)
-{
-#if 0
-    Symbol *sym;
-    for (sym = c->globals.head; sym != NULL; sym = sym->next) {
-        if (sym->fixups) {
-            VMVALUE offset = StoreVector(c, &sym->v.value, 1);
-            sym->placed = VMTRUE;
-            fixup(c, sym->offset, offset);
-            sym->offset = offset;
-            sym->fixups = 0;
-        }
+    if (!sym->placed) {
+        sym->offset = StoreVector(c, &sym->v.value, 1);
+        sym->placed = VMTRUE;
     }
-#endif
+    return sym->offset;
 }
 
 /* AddStringRef - add a reference to a string in the string table */
 static VMUVALUE AddStringRef(GenerateContext *c, String *str)
 {
-    return 0;
+    return (uint8_t *)str->data - c->sys->freeSpace;
 }
 
 /* StoreVector - store a VMVALUE vector */
 static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size)
 {
-#if 0
-    VMVALUE addr = (VMVALUE)image->free;
-    if (image->free + size > image->top)
-        return NIL;
-    memcpy(image->free, buf, size * sizeof(VMVALUE));
-    image->free += size;
-    return addr;
-#endif
-    return 0;
+    return StoreBVector(c, (uint8_t *)buf, size * sizeof(VMVALUE));
 }
 
 /* StoreBVector - store a byte vector */
 static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size)
 {
-    return StoreVector(c, (VMVALUE *)buf, GetObjSizeInWords(size));
+    System *sys = c->sys;
+    uint8_t *p;
+    if (!(p = AllocateHighMemory(sys, size)))
+        return 0;
+    memcpy(p, buf, size);
+    return p - sys->freeSpace;
 }
 
 /* GenerateError - report a code generation error */
 static void GenerateError(GenerateContext *c, const char *fmt, ...)
 {
+    va_list ap;
+    va_start(ap, fmt);
+    VM_printf("error: ");
+    VM_vprintf(fmt, ap);
+    va_end(ap);
 }
 
-/* GenerateError - report a fatal code generation error */
+/* GenerateFatal - report a fatal code generation error */
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...)
 {
+    va_list ap;
+    va_start(ap, fmt);
+    VM_printf("fatal: ");
+    VM_vprintf(fmt, ap);
+    va_end(ap);
 }

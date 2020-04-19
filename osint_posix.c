@@ -64,8 +64,6 @@ int VM_opendir(const char *path, VMDIR *dir)
 int VM_readdir(VMDIR *dir, VMDIRENT *entry)
 {
     struct dirent *ansi_entry;
-    char *ptr;
-    int i;
     
     if (!(ansi_entry = readdir(dir->dirp)))
         return -1;

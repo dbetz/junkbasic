@@ -1466,7 +1466,7 @@ String *AddString(ParseContext *c, const char *value)
     /* allocate the string structure */
     str = (String *)AllocateHighMemory(c->sys, sizeof(String) + strlen(value));
     memset(str, 0, sizeof(String));
-    strcpy((char *)str->data, value);
+    strcpy(str->data, value);
     str->next = c->strings;
     c->strings = str;
 

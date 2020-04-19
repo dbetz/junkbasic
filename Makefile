@@ -21,7 +21,7 @@ system.h \
 types.h
 
 $(TARGET):	$(SRCS) $(HDRS) Makefile
-	$(CC) -DMAC -DLOAD_SAVE -o $@ $(SRCS)
+	$(CC) -DMAC -DLOAD_SAVE -Wall -o $@ $(SRCS)
 
 $(TARGET).p2:	$(SRCS) $(HDRS) Makefile
 	$(P2CC) -DPROPELLER -DLOAD_SAVE -2b -o $@ $(SRCS)
