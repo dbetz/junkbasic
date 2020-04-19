@@ -20,8 +20,10 @@ image.h \
 system.h \
 types.h
 
+CFLAGS=-Wall -Wno-unused-function
+
 $(TARGET):	$(SRCS) $(HDRS) Makefile
-	$(CC) -DMAC -DLOAD_SAVE -Wall -o $@ $(SRCS)
+	$(CC) -DMAC -DLOAD_SAVE $(CFLAGS) -o $@ $(SRCS)
 
 $(TARGET).p2:	$(SRCS) $(HDRS) Makefile
 	$(P2CC) -DPROPELLER -DLOAD_SAVE -2b -o $@ $(SRCS)

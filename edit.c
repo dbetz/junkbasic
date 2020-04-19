@@ -11,6 +11,7 @@
 static void DoNew(EditBuf *buf);
 static void DoList(EditBuf *buf);
 static void DoRun(EditBuf *buf);
+static void DoRenum(EditBuf *buf);
 #ifdef LOAD_SAVE
 static void DoLoad(EditBuf *buf);
 static void DoSave(EditBuf *buf);
@@ -25,6 +26,7 @@ static struct {
 {   "NEW",      DoNew   },
 {   "LIST",     DoList  },
 {   "RUN",      DoRun   },
+{   "RENUM",    DoRenum },
 #ifdef LOAD_SAVE
 {   "LOAD",     DoLoad  },
 {   "SAVE",     DoSave  },
@@ -137,6 +139,19 @@ static void DoRun(EditBuf *buf)
     }
     
     sys->nextLow = nextLow;
+}
+
+static void DoRenum(EditBuf *buf)
+{
+    uint8_t *p = buf->buffer;
+    int lineNumber = 100;
+    int increment = 10;
+    while (p < buf->bufferTop) {
+        Line *line = (Line *)p;
+        line->lineNumber = lineNumber;
+        lineNumber += increment;
+        p = p + line->length;
+    }
 }
 
 #ifdef LOAD_SAVE

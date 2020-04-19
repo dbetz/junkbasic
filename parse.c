@@ -121,7 +121,6 @@ void Compile(ParseContext *c)
     
     /* parse the program */
     while (GetLine(c->sys, &c->lineNumber)) {
-    printf("line: %s", c->sys->linePtr);
         int tkn;
         if ((tkn = GetToken(c)) != T_EOL)
             ParseStatement(c, tkn);
@@ -258,6 +257,12 @@ static void ParseEndFunction(ParseContext *c)
     else if (c->bptr->type != BLOCK_FUNCTION)
         ParseError(c, "function definition not complete");
     PrintNode(c->currentFunction, 0);
+    {
+        GenerateContext *g = InitGenerateContext(c->sys);
+        if (g) {
+            Generate(g, c->currentFunction);
+        }
+    }
     EndFunction(c);
 }
 

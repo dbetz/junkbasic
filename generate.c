@@ -69,7 +69,7 @@ static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
 static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
-static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size);
+static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
@@ -155,7 +155,7 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
-        pv->u.val = expr->u.symbolRef.symbol->offset;
+        pv->u.val = expr->u.symbolRef.symbol->v.value;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
@@ -208,6 +208,8 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
 {
     System *sys = c->sys;
     uint8_t *base = sys->nextLow;
+    VMVALUE code;
+    size_t codeSize;
     putcbyte(c, OP_FRAME);
     putcbyte(c, F_SIZE + node->u.functionDefinition.localOffset);
     code_statement_list(c, node->u.functionDefinition.bodyStatements);
@@ -215,7 +217,12 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
         putcbyte(c, OP_RETURNZ);
     else
         putcbyte(c, OP_HALT);
-    DecodeFunction(0, base, sys->nextLow - base);
+    codeSize = sys->nextLow - base;
+    if (!(code = StoreByteVector(c, base, codeSize)))
+        GenerateError(c, "insufficient memory");
+    if (node->u.functionDefinition.symbol)
+        node->u.functionDefinition.symbol->v.value = code;
+    DecodeFunction(code, sys->freeSpace + code, codeSize);
 }
 
 /* code_if_statement - generate code for an IF statement */
@@ -519,10 +526,10 @@ static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym)
 {
     if (!sym->placed) {
-        sym->offset = StoreVector(c, &sym->v.value, 1);
+        sym->v.value = StoreVector(c, &sym->v.value, 1);
         sym->placed = VMTRUE;
     }
-    return sym->offset;
+    return sym->v.value;
 }
 
 /* AddStringRef - add a reference to a string in the string table */
@@ -534,11 +541,11 @@ static VMUVALUE AddStringRef(GenerateContext *c, String *str)
 /* StoreVector - store a VMVALUE vector */
 static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size)
 {
-    return StoreBVector(c, (uint8_t *)buf, size * sizeof(VMVALUE));
+    return StoreByteVector(c, (uint8_t *)buf, size * sizeof(VMVALUE));
 }
 
-/* StoreBVector - store a byte vector */
-static VMVALUE StoreBVector(GenerateContext *c, const uint8_t *buf, int size)
+/* StoreByteVector - store a byte vector */
+static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
 {
     System *sys = c->sys;
     uint8_t *p;

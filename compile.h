@@ -126,7 +126,7 @@ struct Symbol {
     Symbol *next;
     StorageClass storageClass;
     Type type;
-    VMVALUE offset;
+    //VMVALUE offset;
     int placed;
     union {
         VMVALUE value;
