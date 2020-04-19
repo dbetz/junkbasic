@@ -127,8 +127,6 @@ void Compile(ParseContext *c)
             ParseStatement(c, tkn);
     }
     
-    DumpSymbols(&c->globals, "Globals");
-    
     PrintNode(c->mainFunction, 0);
     
     {
@@ -137,6 +135,8 @@ void Compile(ParseContext *c)
             Generate(g, c->mainFunction);
         }
     }
+    
+    DumpSymbols(&c->globals, "Globals");
 }
 
 /* ParseStatement - parse a statement */
