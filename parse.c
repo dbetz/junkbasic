@@ -126,7 +126,7 @@ void Compile(ParseContext *c)
     InitScan(c);
     
     /* parse the program */
-    while (GetLine(c->sys)) {
+    while (GetLine(c->sys, &c->lineNumber)) {
         int tkn;
         if ((tkn = GetToken(c)) != T_EOL)
             ParseStatement(c, tkn);

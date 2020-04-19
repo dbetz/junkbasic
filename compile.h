@@ -142,9 +142,6 @@ typedef struct {
     uint8_t *nextLocal;             /* next local heap space location */
     size_t heapSize;                /* size of heap space in bytes */
     size_t maxHeapUsed;             /* maximum amount of heap space allocated so far */
-    int (*getLine)(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
-                                    /* scan - function to get a line of input */
-    void *getLineCookie;            /* scan - cookie for the getLine function */
     int lineNumber;                 /* scan - current line number */
     int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */

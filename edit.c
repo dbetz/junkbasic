@@ -47,7 +47,7 @@ static void BufNew(EditBuf *buf);
 static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text);
 static int BufDeleteLineN(EditBuf *buf, int lineNumber);
 static int BufSeekN(EditBuf *buf, int lineNumber);
-static int BufGetLine(EditBuf *buf, int *pLineNumber, char *text);
+static char *BufGetLine(EditBuf *buf, int *pLineNumber, char *text);
 static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine);
 
 void EditWorkspace(System *sys)
@@ -63,7 +63,7 @@ void EditWorkspace(System *sys)
     if (!(editBuf = BufInit(sys, editBuffer, editBufferSize)))
         Abort(sys, "insufficient memory for edit buffer");
 
-    while (GetLine(sys)) {
+    while (GetLine(sys, &lineNumber)) {
 
         if ((token = NextToken(sys)) != NULL) {
             if (ParseNumber(token, &lineNumber)) {
@@ -108,11 +108,10 @@ static void DoList(EditBuf *buf)
         VM_printf("%d%s", lineNumber, buf->sys->lineBuf);
 }
 
-static int EditGetLine(char *buf, int len, void *cookie)
+static char *EditGetLine(char *buf, int len, int *pLineNumber, void *cookie)
 {
     EditBuf *editBuf = (EditBuf *)cookie;
-    int lineNumber;
-    return BufGetLine(editBuf, &lineNumber, buf);
+    return BufGetLine(editBuf, pLineNumber, buf);
 }
 
 static void DoRun(EditBuf *buf)
@@ -372,7 +371,7 @@ static int BufSeekN(EditBuf *buf, int lineNumber)
     return VMTRUE;
 }
 
-static int BufGetLine(EditBuf *buf, int *pLineNumber, char *text)
+static char *BufGetLine(EditBuf *buf, int *pLineNumber, char *text)
 {
     /* check for the end of the buffer */
     if ((uint8_t *)buf->currentLine >= buf->bufferTop)
@@ -386,7 +385,7 @@ static int BufGetLine(EditBuf *buf, int *pLineNumber, char *text)
     buf->currentLine = (Line *)((char *)buf->currentLine + buf->currentLine->length);
 
     /* return successfully */
-    return VMTRUE;
+    return text;
 }
 
 static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine)

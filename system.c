@@ -45,9 +45,9 @@ void ResetToMark(System *sys, uint8_t *mark)
 }
 
 /* GetLine - get the next input line */
-int GetLine(System *sys)
+int GetLine(System *sys, int *pLineNumber)
 {
-    if (!(*sys->getLine)(sys->lineBuf, sizeof(sys->lineBuf), sys->getLineCookie))
+    if (!(*sys->getLine)(sys->lineBuf, sizeof(sys->lineBuf), pLineNumber, sys->getLineCookie))
         return VMFALSE;
     sys->linePtr = sys->lineBuf;
     return VMTRUE;

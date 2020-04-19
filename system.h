@@ -15,7 +15,7 @@
 #define MAXLINE         128
 
 /* line input handler */
-typedef int GetLineHandler(char *buf, int len, void *cookie);
+typedef char *GetLineHandler(char *buf, int len, int *pLineNumber, void *cookie);
 
 /* system context */
 typedef struct {
@@ -33,7 +33,7 @@ System *InitSystem(uint8_t *freeSpace, size_t freeSize);
 uint8_t *AllocateFreeSpace(System *sys, size_t size);
 uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize);
 void ResetToMark(System *sys, uint8_t *mark);
-int GetLine(System *sys);
+int GetLine(System *sys, int *pLineNumber);
 void Abort(System *sys, const char *fmt, ...);
 
 void VM_sysinit(int argc, char *argv[]);

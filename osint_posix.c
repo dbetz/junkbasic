@@ -14,9 +14,7 @@
 
 uint8_t workspace[WORKSPACE_SIZE];
 
-#ifdef LINE_EDIT
-static char *EditLine(char *buf, int size, void *cookie);
-#endif
+static char *GetConsoleLine(char *buf, int size, int *pLineNumber, void *cookie);
 
 int main(int argc, char *argv[])
 {
@@ -26,12 +24,7 @@ int main(int argc, char *argv[])
     _setrootvfs(_vfs_open_host());  // to access host files
     //_setrootvfs(_vfs_open_sdcard()); // to access files on SD card
 #endif
-#ifdef LINE_EDIT
-        sys->getLine = EditLine;
-#else
-        sys->getLine = (GetLineHandler *)fgets;
-        sys->getLineCookie = stdin;
-#endif
+        sys->getLine = GetConsoleLine;
         EditWorkspace(sys);
     }
     return 0;
@@ -44,14 +37,12 @@ void VM_flush(void)
 
 int VM_getchar(void)
 {
-#ifdef LINE_EDIT
     int ch = getchar();
+#ifdef LINE_EDIT
     if (ch == '\r')
         ch = '\n';
-    return ch;
-#else
-    return getchar();
 #endif
+    return ch;
 }
 
 void VM_putchar(int ch)
@@ -62,8 +53,6 @@ void VM_putchar(int ch)
 #endif
     putchar(ch);
 }
-
-#ifdef LOAD_SAVE
 
 int VM_opendir(const char *path, VMDIR *dir)
 {
@@ -91,11 +80,8 @@ void VM_closedir(VMDIR *dir)
     closedir(dir->dirp);
 }
 
-#endif
-
 #ifdef LINE_EDIT
-
-static char *EditLine(char *buf, int size, void *cookie)
+static char *GetConsoleLine(char *buf, int size, int *pLineNumber, void *cookie)
 {
     int i = 0;
     while (i < size - 1) {
@@ -123,5 +109,10 @@ static char *EditLine(char *buf, int size, void *cookie)
     buf[i] = '\0';
     return buf;
 }
-
+#else
+static char *GetConsoleLine(char *buf, int size, int *pLineNumber, void *cookie)
+{
+    *pLineNumber = 0;
+    return fgets(buf, size, stdin);
+}
 #endif
