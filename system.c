@@ -16,32 +16,36 @@ System *InitSystem(uint8_t *freeSpace, size_t freeSize)
         return NULL;
     sys->freeSpace = freeSpace + sizeof(System);
     sys->freeTop = freeSpace + freeSize;
-    sys->freeNext = sys->freeSpace;
+    sys->nextLow = sys->freeSpace;
+    sys->nextHigh = sys->freeTop;
+    sys->heapSize = sys->freeTop - sys->freeSpace;
+    sys->maxHeapUsed = 0;
     return sys;
 }
 
-/* AllocateFreeSpace - allocate free space */
-uint8_t *AllocateFreeSpace(System *sys, size_t size)
+/* AllocateHighMemory - allocate high memory from the heap */
+void *AllocateHighMemory(System *sys, size_t size)
 {
-    uint8_t *p = sys->freeNext;
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (p + size > sys->freeTop)
-        return NULL;
-    sys->freeNext += size;
-    return p;
+    if (sys->nextHigh - size < sys->nextLow)
+        Abort(sys, "insufficient memory");
+    sys->nextHigh -= size;
+    if (sys->heapSize - (sys->nextHigh - sys->nextLow) > sys->maxHeapUsed)
+        sys->maxHeapUsed = sys->heapSize - (sys->nextHigh - sys->nextLow);
+    return sys->nextHigh;
 }
 
-uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize)
+/* AllocateLowMemory - allocate low memory from the heap */
+void *AllocateLowMemory(System *sys, size_t size)
 {
-    uint8_t *p = sys->freeNext;
-    *pSize = sys->freeTop - p;
-    sys->freeNext += *pSize;
+    uint8_t *p = sys->nextLow;
+    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
+    if (p + size > sys->nextHigh)
+        Abort(sys, "insufficient memory");
+    sys->nextLow += size;
+    if (sys->heapSize - (sys->nextHigh - sys->nextLow) > sys->maxHeapUsed)
+        sys->maxHeapUsed = sys->heapSize - (sys->nextHigh - sys->nextLow);
     return p;
-}
-
-void ResetToMark(System *sys, uint8_t *mark)
-{
-    sys->freeNext = mark;
 }
 
 /* GetLine - get the next input line */

@@ -61,7 +61,7 @@ static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr
 /* InitParseContext - parse a statement */
 ParseContext *InitParseContext(System *sys)
 {
-    ParseContext *c = (ParseContext *)AllocateFreeSpace(sys, sizeof(ParseContext));
+    ParseContext *c = (ParseContext *)AllocateLowMemory(sys, sizeof(ParseContext));
     if (c) {
         memset(c, 0, sizeof(ParseContext));
         c->sys = sys;    
@@ -100,12 +100,6 @@ void Compile(ParseContext *c)
     if (setjmp(c->sys->errorTarget) != 0)
         return;
 
-    /* use the rest of the system free space for the compiler heap */
-    c->nextLocal = sys->freeNext;
-    c->nextGlobal = sys->freeTop;
-    c->heapSize = sys->freeTop - sys->freeNext;
-    c->maxHeapUsed = 0;
-    
     /* initialize the string table */
     c->strings = NULL;
 
@@ -127,6 +121,7 @@ void Compile(ParseContext *c)
     
     /* parse the program */
     while (GetLine(c->sys, &c->lineNumber)) {
+    printf("line: %s", c->sys->linePtr);
         int tkn;
         if ((tkn = GetToken(c)) != T_EOL)
             ParseStatement(c, tkn);
@@ -137,7 +132,7 @@ void Compile(ParseContext *c)
     PrintNode(c->mainFunction, 0);
     
     {
-        GenerateContext *g = InitGenerateContext(c->nextLocal, c->nextGlobal - c->nextLocal);
+        GenerateContext *g = InitGenerateContext(sys);
         if (g) {
             Generate(g, c->mainFunction);
         }
@@ -752,14 +747,14 @@ static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNod
     callNode->u.functionCall.fcn = functionNode;
     callNode->u.functionCall.args = NULL;
     
-    actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
     actual->node = devExpr;
     actual->next = callNode->u.functionCall.args;
     callNode->u.functionCall.args = actual;
     ++callNode->u.functionCall.argc;
 
     if (expr) {
-        actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
         actual->node = expr;
         actual->next = callNode->u.functionCall.args;
         callNode->u.functionCall.args = actual;
@@ -840,12 +835,12 @@ ParseTreeNode *ParseExpr(ParseContext *c)
     if ((tkn = GetToken(c)) == T_OR) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
         NodeListEntry *entry, **pLast;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        node2->u.exprList.exprs = entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
         entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
             entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
@@ -866,12 +861,12 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
     if ((tkn = GetToken(c)) == T_AND) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
         NodeListEntry *entry, **pLast;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        node2->u.exprList.exprs = entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
         entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
             entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
@@ -1220,7 +1215,7 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
         SaveToken(c, tkn);
         do {
             NodeListEntry *actual;
-            actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
             actual->node = ParseExpr(c);
             actual->next = NULL;
             *pLast = actual;
@@ -1436,7 +1431,7 @@ static void PopBlock(ParseContext *c)
 /* NewParseTreeNode - allocate a new parse tree node */
 static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 {
-    ParseTreeNode *node = (ParseTreeNode *)LocalAlloc(c, sizeof(ParseTreeNode));
+    ParseTreeNode *node = (ParseTreeNode *)AllocateLowMemory(c->sys, sizeof(ParseTreeNode));
     memset(node, 0, sizeof(ParseTreeNode));
     node->nodeType = type;
     return node;
@@ -1445,7 +1440,7 @@ static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 /* AddNodeToList - add a node to a parse tree node list */
 static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
 {
-    NodeListEntry *entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    NodeListEntry *entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
     entry->node = node;
     entry->next = NULL;
     **ppNextEntry = entry;
@@ -1469,7 +1464,7 @@ String *AddString(ParseContext *c, const char *value)
             return str;
 
     /* allocate the string structure */
-    str = (String *)GlobalAlloc(c, sizeof(String) + strlen(value));
+    str = (String *)AllocateHighMemory(c->sys, sizeof(String) + strlen(value));
     memset(str, 0, sizeof(String));
     strcpy((char *)str->data, value);
     str->next = c->strings;
@@ -1477,29 +1472,4 @@ String *AddString(ParseContext *c, const char *value)
 
     /* return the string table entry */
     return str;
-}
-
-/* GlobalAlloc - allocate memory from the global heap */
-void *GlobalAlloc(ParseContext *c, size_t size)
-{
-    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (c->nextGlobal - size < c->nextLocal)
-        ParseError(c, "insufficient memory");
-    c->nextGlobal -= size;
-    if (c->heapSize - (c->nextGlobal - c->nextLocal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextGlobal - c->nextLocal);
-    return c->nextGlobal;
-}
-
-/* LocalAlloc - allocate memory from the local heap */
-void *LocalAlloc(ParseContext *c, size_t size)
-{
-    uint8_t *p = c->nextLocal;
-    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (p + size > c->nextGlobal)
-        ParseError(c, "insufficient memory");
-    c->nextLocal += size;
-    if (c->heapSize - (c->nextGlobal - c->nextLocal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextGlobal - c->nextLocal);
-    return p;
 }

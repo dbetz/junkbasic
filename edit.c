@@ -42,7 +42,7 @@ static int SetProgramName(EditBuf *buf);
 #endif
 
 /* edit buffer prototypes */
-static EditBuf *BufInit(System *sys, uint8_t *space, size_t size);
+static EditBuf *BufInit(System *sys);
 static void BufNew(EditBuf *buf);
 static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text);
 static int BufDeleteLineN(EditBuf *buf, int lineNumber);
@@ -52,15 +52,11 @@ static int FindLineN(EditBuf *buf, int lineNumber, Line **pLine);
 
 void EditWorkspace(System *sys)
 {
-    uint8_t *editBuffer;
-    size_t editBufferSize;
     EditBuf *editBuf;
     int lineNumber;
     char *token;
     
-    editBuffer = AllocateAllFreeSpace(sys, &editBufferSize);
-
-    if (!(editBuf = BufInit(sys, editBuffer, editBufferSize)))
+    if (!(editBuf = BufInit(sys)))
         Abort(sys, "insufficient memory for edit buffer");
 
     while (GetLine(sys, &lineNumber)) {
@@ -117,11 +113,9 @@ static char *EditGetLine(char *buf, int len, int *pLineNumber, void *cookie)
 static void DoRun(EditBuf *buf)
 {
     System *sys = buf->sys;
+    uint8_t *nextLow = sys->nextLow;
     ParseContext *c;
 
-    /* give the unused edit buffer space back to the system */
-    ResetToMark(sys, buf->bufferTop);
-    
     if (!(c = InitParseContext(sys)))
         VM_printf("insufficient memory");
     else {
@@ -135,15 +129,14 @@ static void DoRun(EditBuf *buf)
         sys->getLineCookie = buf;
 
         BufSeekN(buf, 0);
-
+        
         Compile(c);
 
         sys->getLine = getLine;
         sys->getLineCookie = getLineCookie;
     }
     
-    /* grab the rest of the system memory again for the edit buffer */
-    ResetToMark(sys, buf->bufferMax);
+    sys->nextLow = nextLow;
 }
 
 #ifdef LOAD_SAVE
@@ -274,14 +267,14 @@ static int IsBlank(char *p)
     return VMTRUE;
 }
 
-static EditBuf *BufInit(System *sys, uint8_t *space, size_t size)
+static EditBuf *BufInit(System *sys)
 {
-    EditBuf *buf = (EditBuf *)space;
-    if (size < sizeof(EditBuf))
+    EditBuf *buf;
+    if (!(buf = (EditBuf *)AllocateLowMemory(sys, sizeof(EditBuf))))
         return NULL;
     memset(buf, 0, sizeof(EditBuf));
     buf->sys = sys;
-    buf->bufferMax = space + size;
+    buf->buffer = sys->nextLow;
     buf->bufferTop = buf->buffer;
     buf->currentLine = (Line *)buf->buffer;
     return buf;
@@ -289,12 +282,14 @@ static EditBuf *BufInit(System *sys, uint8_t *space, size_t size)
 
 static void BufNew(EditBuf *buf)
 {
+    buf->sys->nextLow = buf->buffer;
     buf->bufferTop = buf->buffer;
     buf->currentLine = (Line *)buf->buffer;
 }
 
 static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
 {
+    System *sys = buf->sys;
     int newLength = sizeof(Line) + strlen(text);
     int spaceNeeded;
     uint8_t *next;
@@ -316,13 +311,14 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
     }
 
     /* make sure there is enough space */
-    if (buf->bufferTop + spaceNeeded > buf->bufferMax)
+    if (buf->sys->nextLow + spaceNeeded > buf->sys->nextHigh)
         return VMFALSE;
 
     /* make space for the new line */
-    if (next < buf->bufferTop && spaceNeeded != 0)
-        memmove(next + spaceNeeded, next, buf->bufferTop - next);
-    buf->bufferTop += spaceNeeded;
+    if (next < sys->nextLow && spaceNeeded != 0)
+        memmove(next + spaceNeeded, next, sys->nextLow - next);
+    sys->nextLow += spaceNeeded;
+    buf->bufferTop = sys->nextLow;
 
     /* insert the new line */
     if (newLength > 0) {
@@ -337,6 +333,7 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
 
 static int BufDeleteLineN(EditBuf *buf, int lineNumber)
 {
+    System *sys = buf->sys;
     Line *line, *next;
     int spaceFreed;
 
@@ -349,9 +346,10 @@ static int BufDeleteLineN(EditBuf *buf, int lineNumber)
     spaceFreed = line->length;
 
     /* remove the line to be deleted */
-    if ((uint8_t *)next < buf->bufferTop)
-        memmove(line, next, buf->bufferTop - (uint8_t *)next);
-    buf->bufferTop -= spaceFreed;
+    if ((uint8_t *)next < sys->nextLow)
+        memmove(line, next, sys->nextLow - (uint8_t *)next);
+    sys->nextLow -= spaceFreed;
+    buf->bufferTop = sys->nextLow;
 
     /* return successfully */
     return VMTRUE;
@@ -375,7 +373,7 @@ static char *BufGetLine(EditBuf *buf, int *pLineNumber, char *text)
 {
     /* check for the end of the buffer */
     if ((uint8_t *)buf->currentLine >= buf->bufferTop)
-        return VMFALSE;
+        return NULL;
 
     /* get the current line */
     *pLineNumber = buf->currentLine->lineNumber;

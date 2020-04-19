@@ -25,14 +25,17 @@ typedef struct {
     uint8_t *freeSpace;         /* base of free space */
     uint8_t *freeNext;          /* next free space available */
     uint8_t *freeTop;           /* top of free space */
+    uint8_t *nextHigh;          /* next high memory heap space location */
+    uint8_t *nextLow;           /* next low memory heap space location */
+    size_t heapSize;            /* size of heap space in bytes */
+    size_t maxHeapUsed;         /* maximum amount of heap space allocated so far */
     char lineBuf[MAXLINE];      /* current input line */
     char *linePtr;              /* pointer to the current character */
 } System;
 
 System *InitSystem(uint8_t *freeSpace, size_t freeSize);
-uint8_t *AllocateFreeSpace(System *sys, size_t size);
-uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize);
-void ResetToMark(System *sys, uint8_t *mark);
+void *AllocateHighMemory(System *sys, size_t size);
+void *AllocateLowMemory(System *sys, size_t size);
 int GetLine(System *sys, int *pLineNumber);
 void Abort(System *sys, const char *fmt, ...);
 

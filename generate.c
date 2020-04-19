@@ -10,8 +10,7 @@
 
 /* code generator context */
 struct GenerateContext {
-    uint8_t *cptr;                  /* next available code staging buffer position */
-    uint8_t *ctop;                  /* top of code staging buffer */
+    System *sys;
     uint8_t *codeBuf;               /* code staging buffer */
 };
 
@@ -74,14 +73,13 @@ static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
 /* InitGenerateContext - initialize a generate context */
-GenerateContext *InitGenerateContext(uint8_t *freeSpace, size_t freeSize)
+GenerateContext *InitGenerateContext(System *sys)
 {
-    GenerateContext *g = (GenerateContext *)freeSpace;
-    if (freeSize < sizeof(GenerateContext))
+    GenerateContext *g;
+    if (!(g = (GenerateContext *)AllocateLowMemory(sys, sizeof(GenerateContext))))
         return NULL;
-    g->codeBuf = freeSpace + sizeof(GenerateContext);
-    g->cptr = g->codeBuf;
-    g->ctop = freeSpace + freeSize;
+    g->sys = sys;
+    g->codeBuf = sys->nextLow;
     return g;
 }
 
@@ -207,7 +205,8 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 /* code_function_definition - generate code for a function definition */
 static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
 {
-    uint8_t *base = c->cptr;
+    System *sys = c->sys;
+    uint8_t *base = sys->nextLow;
     putcbyte(c, OP_FRAME);
     putcbyte(c, F_SIZE + node->u.functionDefinition.localOffset);
     code_statement_list(c, node->u.functionDefinition.bodyStatements);
@@ -215,7 +214,7 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
         putcbyte(c, OP_RETURNZ);
     else
         putcbyte(c, OP_HALT);
-    DecodeFunction(0, base, c->cptr - base);
+    DecodeFunction(0, base, sys->nextLow - base);
 }
 
 /* code_if_statement - generate code for an IF statement */
@@ -441,29 +440,31 @@ static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv)
 /* codeaddr - get the current code address (actually, offset) */
 static VMUVALUE codeaddr(GenerateContext *c)
 {
-    return (VMUVALUE)(c->cptr - c->codeBuf);
+    return (VMUVALUE)(c->sys->nextLow - c->codeBuf);
 }
 
 /* putcbyte - put a code byte into the code buffer */
 static VMUVALUE putcbyte(GenerateContext *c, int b)
 {
+    System *sys = c->sys;
     VMUVALUE addr = codeaddr(c);
-    if (c->cptr >= c->ctop)
+    if (sys->nextLow >= sys->nextHigh)
         GenerateFatal(c, "Bytecode buffer overflow");
-    *c->cptr++ = b;
+    *sys->nextLow++ = b;
     return addr;
 }
 
 /* putcword - put a code word into the code buffer */
 static VMUVALUE putcword(GenerateContext *c, VMVALUE w)
 {
+    System *sys = c->sys;
     VMUVALUE addr = codeaddr(c);
     uint8_t *p;
     int cnt = sizeof(VMVALUE);
-    if (c->cptr + sizeof(VMVALUE) > c->ctop)
+    if (sys->nextLow + sizeof(VMVALUE) > sys->nextHigh)
         GenerateFatal(c, "Bytecode buffer overflow");
-     c->cptr += sizeof(VMVALUE);
-     p = c->cptr;
+     sys->nextLow += sizeof(VMVALUE);
+     p = sys->nextLow;
      while (--cnt >= 0) {
         *--p = w;
         w >>= 8;

@@ -138,10 +138,6 @@ struct Symbol {
 /* parse context */
 typedef struct {
     System *sys;                    /* system context */
-    uint8_t *nextGlobal;            /* next global heap space location */
-    uint8_t *nextLocal;             /* next local heap space location */
-    size_t heapSize;                /* size of heap space in bytes */
-    size_t maxHeapUsed;             /* maximum amount of heap space allocated so far */
     int lineNumber;                 /* scan - current line number */
     int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
@@ -270,8 +266,6 @@ ParseContext *InitParseContext(System *sys);
 void Compile(ParseContext *c);
 String *AddString(ParseContext *c, const char *value);
 void DumpStrings(ParseContext *c);
-void *GlobalAlloc(ParseContext *c, size_t size);
-void *LocalAlloc(ParseContext *c, size_t size);
 
 /* statement.c */
 void ParseStatement(ParseContext *c, int tkn);
@@ -310,7 +304,7 @@ int IsConstant(Symbol *symbol);
 void DumpSymbols(SymbolTable *table, const char *tag);
 
 /* generate.c */
-GenerateContext *InitGenerateContext(uint8_t *freeSpace, size_t freeSize);
+GenerateContext *InitGenerateContext(System *sys);
 void Generate(GenerateContext *c, ParseTreeNode *node);
 
 #endif
