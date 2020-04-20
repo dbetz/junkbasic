@@ -100,6 +100,7 @@ struct String {
 
 /* storage class ids */
 typedef enum {
+    SC_UNKNOWN,
     SC_CONSTANT,
     SC_VARIABLE
 } StorageClass;
@@ -125,13 +126,8 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
-    Type type;
-    //VMVALUE offset;
     int placed;
-    union {
-        VMVALUE value;
-        String *string;
-    } v;
+    VMVALUE value;
     char name[1];
 };
 

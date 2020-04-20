@@ -1272,7 +1272,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     if (c->currentFunction != c->mainFunction && (symbol = FindLocal(c, name)) != NULL) {
         if (symbol->storageClass == SC_CONSTANT) {
             node = NewParseTreeNode(c, NodeTypeIntegerLit);
-            node->u.integerLit.value = symbol->v.value;
+            node->u.integerLit.value = symbol->value;
         }
         else {
             node = NewParseTreeNode(c, NodeTypeLocalRef);
@@ -1290,7 +1290,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     else if ((symbol = FindGlobal(c, c->token)) != NULL) {
         if (symbol->storageClass == SC_CONSTANT) {
             node = NewParseTreeNode(c, NodeTypeIntegerLit);
-            node->u.integerLit.value = symbol->v.value;
+            node->u.integerLit.value = symbol->value;
         }
         else {
             node = NewParseTreeNode(c, NodeTypeGlobalRef);

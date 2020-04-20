@@ -99,10 +99,10 @@ void PrintNode(ParseTreeNode *node, int indent)
         printf("GlobalRef: %s\n", node->u.symbolRef.symbol->name);
         break;
     case NodeTypeArgumentRef:
-        printf("ArgumentRef: " INT_FMT "\n", node->u.symbolRef.symbol->v.value);
+        printf("ArgumentRef: " INT_FMT "\n", node->u.symbolRef.symbol->value);
         break;
     case NodeTypeLocalRef:
-        printf("LocalRef: " INT_FMT "\n", node->u.symbolRef.symbol->v.value);
+        printf("LocalRef: " INT_FMT "\n", node->u.symbolRef.symbol->value);
         break;
     case NodeTypeStringLit:
 		printf("StringLit: '%s'\n",node->u.stringLit.string->data);

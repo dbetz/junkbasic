@@ -51,7 +51,6 @@ static void code_loop_until_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_return_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_statement_list(GenerateContext *c, NodeListEntry *entry);
 static void code_shortcircuit(GenerateContext *c, int op, ParseTreeNode *expr);
-static void code_addressof(GenerateContext *c, ParseTreeNode *expr);
 static void code_call(GenerateContext *c, ParseTreeNode *expr);
 static void code_symbolRef(GenerateContext *c, Symbol *sym);
 static void code_arrayref(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
@@ -155,7 +154,7 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
-        pv->u.val = expr->u.symbolRef.symbol->v.value;
+        pv->u.val = expr->u.symbolRef.symbol->value;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
@@ -221,7 +220,7 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
     if (!(code = StoreByteVector(c, base, codeSize)))
         GenerateError(c, "insufficient memory");
     if (node->u.functionDefinition.symbol)
-        node->u.functionDefinition.symbol->v.value = code;
+        node->u.functionDefinition.symbol->value = code;
     DecodeFunction(code, sys->freeSpace + code, codeSize);
 }
 
@@ -526,10 +525,10 @@ static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym)
 {
     if (!sym->placed) {
-        sym->v.value = StoreVector(c, &sym->v.value, 1);
+        sym->value = StoreVector(c, &sym->value, 1);
         sym->placed = VMTRUE;
     }
-    return sym->v.value;
+    return sym->value;
 }
 
 /* AddStringRef - add a reference to a string in the string table */

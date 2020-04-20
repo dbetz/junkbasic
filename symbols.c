@@ -31,7 +31,7 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
     sym = (Symbol *)AllocateHighMemory(c->sys, size);
     strcpy(sym->name, name);
     sym->storageClass = storageClass;
-    sym->v.value = value;
+    sym->value = value;
     sym->next = NULL;
 
     /* add it to the symbol table */
@@ -65,7 +65,7 @@ static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *n
     sym = (Symbol *)AllocateLowMemory(c->sys, size);
     strcpy(sym->name, name);
     sym->storageClass = storageClass;
-    sym->v.value = value;
+    sym->value = value;
     sym->next = NULL;
 
     /* add it to the symbol table */
@@ -114,6 +114,6 @@ void DumpSymbols(SymbolTable *table, const char *tag)
     if ((sym = table->head) != NULL) {
         VM_printf("%s:\n", tag);
         for (; sym != NULL; sym = sym->next)
-            VM_printf("  %s %08x\n", sym->name, sym->v.value);
+            VM_printf("  %s %08x\n", sym->name, sym->value);
     }
 }
