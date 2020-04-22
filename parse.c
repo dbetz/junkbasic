@@ -80,15 +80,13 @@ static void EnterBuiltInSymbols(ParseContext *c)
 /* EnterBuiltInVariable - enter a built-in variable */
 static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr)
 {
-    Symbol *sym;
-    sym = AddGlobal(c, name, SC_VARIABLE,  addr);
+    AddGlobal(c, name, SC_VARIABLE, TYPE_INTEGER, addr);
 }
 
 /* EnterBuiltInFunction - enter a built-in function */
 static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr)
 {
-    Symbol *sym;
-    sym = AddGlobal(c, name, SC_CONSTANT,  addr);
+    AddGlobal(c, name, SC_CONSTANT, TYPE_FUNCTION, addr);
 }
 
 /* Compile - parse a program */
@@ -226,7 +224,7 @@ static void ParseFunction(ParseContext *c)
     FRequire(c, T_IDENTIFIER);
 
     /* enter the function name in the global symbol table */
-    symbol = AddGlobal(c, c->token, SC_CONSTANT, 0);
+    symbol = AddGlobal(c, c->token, SC_CONSTANT, TYPE_FUNCTION, 0);
     
     /* create the function node */
     function = StartFunction(c, symbol);
@@ -237,7 +235,7 @@ static void ParseFunction(ParseContext *c)
             SaveToken(c, tkn);
             do {
                 FRequire(c, T_IDENTIFIER);
-                AddArgument(c, c->token, SC_VARIABLE, function->u.functionDefinition.argumentOffset);
+                AddArgument(c, c->token, SC_VARIABLE, TYPE_INTEGER, function->u.functionDefinition.argumentOffset);
                 ++function->u.functionDefinition.argumentOffset;
             } while ((tkn = GetToken(c)) == ',');
         }
@@ -329,14 +327,14 @@ static void ParseDim(ParseContext *c)
             //c->image->free += size;
             
             /* add the symbol to the global symbol table */
-            sym = AddGlobal(c, name, SC_VARIABLE, value);
+            sym = AddGlobal(c, name, SC_VARIABLE, TYPE_INTEGER, value);
         }
 
         /* otherwise, add to the local symbol table */
         else {
             if (isArray)
                 ParseError(c, "local arrays are not supported");
-            AddLocal(c, name, SC_VARIABLE, c->currentFunction->u.functionDefinition.localOffset);
+            AddLocal(c, name, SC_VARIABLE, TYPE_INTEGER, c->currentFunction->u.functionDefinition.localOffset);
             ++c->currentFunction->u.functionDefinition.localOffset;
         }
 
@@ -1300,7 +1298,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
 
     /* handle undefined symbols */
     else {
-        symbol = AddGlobal(c, name, SC_VARIABLE, 0);
+        symbol = AddGlobal(c, name, SC_UNKNOWN, TYPE_UNKNOWN, 0);
         node = NewParseTreeNode(c, NodeTypeGlobalRef);
         node->u.symbolRef.symbol = symbol;
     }

@@ -20,7 +20,7 @@ image.h \
 system.h \
 types.h
 
-CFLAGS=-Wall
+CFLAGS=-Wall -Wno-unused-function
 
 $(TARGET):	$(SRCS) $(HDRS) Makefile
 	$(CC) -DMAC -DLOAD_SAVE $(CFLAGS) -o $@ $(SRCS)

@@ -107,6 +107,7 @@ typedef enum {
 
 /* symbol types */
 typedef enum {
+    TYPE_UNKNOWN,
     TYPE_INTEGER,
     TYPE_BYTE,
     TYPE_STRING,
@@ -126,6 +127,7 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
+    Type type;
     int placed;
     VMVALUE value;
     char name[1];
@@ -150,7 +152,7 @@ typedef struct {
 } ParseContext;
 
 /* parse tree node types */
-enum {
+typedef enum {
     NodeTypeFunctionDefinition,
     NodeTypeLetStatement,
     NodeTypeIfStatement,
@@ -174,12 +176,12 @@ enum {
     NodeTypeFunctionCall,
     NodeTypeDisjunction,
     NodeTypeConjunction
-};
+} NodeType;
 
 /* parse tree node structure */
 struct ParseTreeNode {
-    int nodeType;
-    int type;
+    NodeType nodeType;
+    Type type;
     union {
         struct {
             Symbol *symbol;
@@ -290,9 +292,9 @@ void ParseError(ParseContext *c, const char *fmt, ...);
 
 /* symbols.c */
 void InitSymbolTable(SymbolTable *table);
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMVALUE value);
-Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value);
-Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value);
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
+Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
+Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
 Symbol *FindGlobal(ParseContext *c, const char *name);
 Symbol *FindArgument(ParseContext *c, const char *name);
 Symbol *FindLocal(ParseContext *c, const char *name);

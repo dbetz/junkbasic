@@ -10,7 +10,7 @@
 #include "compile.h"
 
 /* local function prototypes */
-static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, int value);
+static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type type, VMVALUE value);
 static Symbol *FindSymbol(SymbolTable *table, const char *name);
 
 /* InitSymbolTable - initialize a symbol table */
@@ -22,7 +22,7 @@ void InitSymbolTable(SymbolTable *table)
 }
 
 /* AddGlobal - add a global symbol to the symbol table */
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMVALUE value)
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
 {
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
@@ -44,19 +44,19 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
 }
 
 /* AddArgument - add an argument symbol to symbol table */
-Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value)
+Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
 {
-    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.arguments, name, storageClass, value);
+    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.arguments, name, storageClass, type, value);
 }
 
 /* AddLocal - add a local symbol to the symbol table */
-Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value)
+Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
 {
-    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.locals, name, storageClass, value);
+    return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.locals, name, storageClass, type, value);
 }
 
 /* AddLocalSymbol - add a symbol to a local symbol table */
-static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, int value)
+static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type type, VMVALUE value)
 {
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
@@ -65,6 +65,7 @@ static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *n
     sym = (Symbol *)AllocateLowMemory(c->sys, size);
     strcpy(sym->name, name);
     sym->storageClass = storageClass;
+    sym->type = type;
     sym->value = value;
     sym->next = NULL;
 

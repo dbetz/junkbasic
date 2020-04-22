@@ -199,6 +199,9 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         code_shortcircuit(c, OP_BRFSC, expr);
         pv->fcn = GEN_NULL;
         break;
+    default:
+        // error
+        break;
     }
 }
 
