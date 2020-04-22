@@ -736,7 +736,7 @@ static void ParseReturn(ParseContext *c)
 static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr)
 {
     ParseTreeNode *functionNode, *callNode, *node;
-    NodeListEntry *actual;
+    NodeListEntry **pNext;
     Symbol *symbol;
 
     if (!(symbol = FindGlobal(c, name)))
@@ -749,20 +749,15 @@ static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNod
     callNode = NewParseTreeNode(c, NodeTypeFunctionCall);
     callNode->u.functionCall.fcn = functionNode;
     callNode->u.functionCall.args = NULL;
+    pNext = &callNode->u.functionCall.args;
     
-    actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-    actual->node = devExpr;
-    actual->next = callNode->u.functionCall.args;
-    callNode->u.functionCall.args = actual;
-    ++callNode->u.functionCall.argc;
-
     if (expr) {
-        actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-        actual->node = expr;
-        actual->next = callNode->u.functionCall.args;
-        callNode->u.functionCall.args = actual;
+        AddNodeToList(c, &pNext, expr);
         ++callNode->u.functionCall.argc;
     }
+
+    AddNodeToList(c, &pNext, devExpr);
+    ++callNode->u.functionCall.argc;
 
     /* build the function call statement */
     node = NewParseTreeNode(c, NodeTypeCallStatement);
@@ -837,17 +832,10 @@ ParseTreeNode *ParseExpr(ParseContext *c)
     node = ParseExpr2(c);
     if ((tkn = GetToken(c)) == T_OR) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
-        NodeListEntry *entry, **pLast;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-        entry->node = node;
-        entry->next = NULL;
-        pLast = &entry->next;
+        NodeListEntry **pNext = &node2->u.exprList.exprs;
+        AddNodeToList(c, &pNext, node);
         do {
-            entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-            entry->node = ParseExpr2(c);
-            entry->next = NULL;
-            *pLast = entry;
-            pLast = &entry->next;
+            AddNodeToList(c, &pNext, ParseExpr2(c));
         } while ((tkn = GetToken(c)) == T_OR);
         node = node2;
     }
@@ -863,17 +851,10 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
     node = ParseExpr3(c);
     if ((tkn = GetToken(c)) == T_AND) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
-        NodeListEntry *entry, **pLast;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-        entry->node = node;
-        entry->next = NULL;
-        pLast = &entry->next;
+        NodeListEntry **pNext = &node2->u.exprList.exprs;
+        AddNodeToList(c, &pNext, node);
         do {
-            entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-            entry->node = ParseExpr2(c);
-            entry->next = NULL;
-            *pLast = entry;
-            pLast = &entry->next;
+            AddNodeToList(c, &pNext, ParseExpr3(c));
         } while ((tkn = GetToken(c)) == T_AND);
         node = node2;
     }
@@ -1206,23 +1187,18 @@ static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayN
 static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionCall);
-    NodeListEntry **pLast;
+    NodeListEntry **pNext;
     int tkn;
 
     /* intialize the function call node */
     node->u.functionCall.fcn = functionNode;
-    pLast = &node->u.functionCall.args;
+    pNext = &node->u.functionCall.args;
 
     /* parse the argument list */
     if ((tkn = GetToken(c)) != ')') {
         SaveToken(c, tkn);
         do {
-            NodeListEntry *actual;
-            actual = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
-            actual->node = ParseExpr(c);
-            actual->next = NULL;
-            *pLast = actual;
-            pLast = &actual->next;
+            AddNodeToList(c, &pNext, ParseExpr(c));
             ++node->u.functionCall.argc;
         } while ((tkn = GetToken(c)) == ',');
         Require(c, tkn, ')');
