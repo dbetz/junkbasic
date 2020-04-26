@@ -47,6 +47,10 @@ static ParseTreeNode *ParseExpr11(ParseContext *c);
 static ParseTreeNode *ParseSimplePrimary(ParseContext *c);
 static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayNode);
 static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode);
+static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node);
+static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node);
+static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node);
+static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node);
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr);
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
 static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
@@ -64,7 +68,12 @@ ParseContext *InitParseContext(System *sys)
     ParseContext *c = (ParseContext *)AllocateLowMemory(sys, sizeof(ParseContext));
     if (c) {
         memset(c, 0, sizeof(ParseContext));
-        c->sys = sys;    
+        c->sys = sys;
+        c->unknownType.id = TYPE_UNKNOWN;
+        c->integerType.id = TYPE_INTEGER;
+        c->stringType.id = TYPE_STRING;
+        c->integerFunctionType.id = TYPE_FUNCTION;
+        c->integerFunctionType.u.functionInfo.returnType = &c->integerType;
     }
     return c;
 }
@@ -80,13 +89,13 @@ static void EnterBuiltInSymbols(ParseContext *c)
 /* EnterBuiltInVariable - enter a built-in variable */
 static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr)
 {
-    AddGlobal(c, name, SC_VARIABLE, TYPE_INTEGER, addr);
+    AddGlobal(c, name, SC_VARIABLE, &c->integerType, addr);
 }
 
 /* EnterBuiltInFunction - enter a built-in function */
 static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr)
 {
-    AddGlobal(c, name, SC_CONSTANT, TYPE_FUNCTION, addr);
+    AddGlobal(c, name, SC_CONSTANT, &c->integerFunctionType, addr);
 }
 
 /* Compile - parse a program */
@@ -224,7 +233,13 @@ static void ParseFunction(ParseContext *c)
     FRequire(c, T_IDENTIFIER);
 
     /* enter the function name in the global symbol table */
-    symbol = AddGlobal(c, c->token, SC_CONSTANT, TYPE_FUNCTION, 0);
+    if (!(symbol = FindGlobal(c, c->token)))
+        symbol = AddGlobal(c, c->token, SC_CONSTANT, &c->integerFunctionType, 0);
+    else {
+        if (symbol->storageClass != SC_CONSTANT || symbol->type != &c->integerFunctionType || symbol->placed)
+            ParseError(c, "invalid definition of a forward referenced function");
+        symbol->storageClass = SC_CONSTANT;
+    }
     
     /* create the function node */
     function = StartFunction(c, symbol);
@@ -235,7 +250,7 @@ static void ParseFunction(ParseContext *c)
             SaveToken(c, tkn);
             do {
                 FRequire(c, T_IDENTIFIER);
-                AddArgument(c, c->token, SC_VARIABLE, TYPE_INTEGER, function->u.functionDefinition.argumentOffset);
+                AddArgument(c, c->token, SC_VARIABLE, &c->integerType, function->u.functionDefinition.argumentOffset);
                 ++function->u.functionDefinition.argumentOffset;
             } while ((tkn = GetToken(c)) == ',');
         }
@@ -288,7 +303,7 @@ static void EndFunction(ParseContext *c)
 static void ParseDim(ParseContext *c)
 {
     char name[MAXTOKEN];
-    VMVALUE value, size = 0;
+    VMVALUE value = 0, size = 0;
     int isArray;
     int tkn;
 
@@ -327,14 +342,14 @@ static void ParseDim(ParseContext *c)
             //c->image->free += size;
             
             /* add the symbol to the global symbol table */
-            sym = AddGlobal(c, name, SC_VARIABLE, TYPE_INTEGER, value);
+            sym = AddGlobal(c, name, SC_VARIABLE, &c->integerType, value);
         }
 
         /* otherwise, add to the local symbol table */
         else {
             if (isArray)
                 ParseError(c, "local arrays are not supported");
-            AddLocal(c, name, SC_VARIABLE, TYPE_INTEGER, c->currentFunction->u.functionDefinition.localOffset);
+            AddLocal(c, name, SC_VARIABLE, &c->integerType, c->currentFunction->u.functionDefinition.localOffset);
             ++c->currentFunction->u.functionDefinition.localOffset;
         }
 
@@ -1191,7 +1206,9 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
     int tkn;
 
     /* intialize the function call node */
+    ResolveFunctionRef(c, functionNode);
     node->u.functionCall.fcn = functionNode;
+    node->type = &c->integerType;
     pNext = &node->u.functionCall.args;
 
     /* parse the argument list */
@@ -1219,10 +1236,12 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
         break;
     case T_NUMBER:
         node = NewParseTreeNode(c, NodeTypeIntegerLit);
+        node->type = &c->integerType;
         node->u.integerLit.value = c->tokenValue;
         break;
     case T_STRING:
         node = NewParseTreeNode(c, NodeTypeStringLit);
+        node->type = &c->stringType;
         node->u.stringLit.string = AddString(c, c->token);
         break;
     case T_IDENTIFIER:
@@ -1236,6 +1255,41 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
     return node;
 }
 
+/* IsUnknownGlobolRef - check for a reference to a global symbol that has not yet been defined */
+static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node)
+{
+    return node->nodeType == NodeTypeGlobalRef && node->u.symbolRef.symbol->storageClass == SC_UNKNOWN;
+}
+
+/* ResolveVariableRef - resolve an unknown global reference to a variable reference */
+static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
+{
+    if (IsUnknownGlobolRef(c, node)) {
+        Symbol *symbol = node->u.symbolRef.symbol;
+        symbol->storageClass = SC_VARIABLE;
+        symbol->type = &c->integerType;
+    }
+}
+
+/* ResolveFunctionRef - resolve an unknown global symbol reference to a function reference */
+static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node)
+{
+    printf("ResolveFunctionRef: nodeType %d\n", node->nodeType);
+    PrintNode(node, 2);
+    if (IsUnknownGlobolRef(c, node)) {
+        Symbol *symbol = node->u.symbolRef.symbol;
+        symbol->storageClass = SC_CONSTANT;
+        symbol->type = &c->integerFunctionType;
+    }
+}
+
+/* ResolveArrayRef - resolve an unknown global symbol reference ot an array reference */
+static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node)
+{
+    if (IsUnknownGlobolRef(c, node)) {
+    }
+}
+
 /* GetSymbolRef - setup a symbol reference */
 ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
 {
@@ -1246,10 +1300,12 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     if (c->currentFunction != c->mainFunction && (symbol = FindLocal(c, name)) != NULL) {
         if (symbol->storageClass == SC_CONSTANT) {
             node = NewParseTreeNode(c, NodeTypeIntegerLit);
+            node->type = &c->integerType;
             node->u.integerLit.value = symbol->value;
         }
         else {
             node = NewParseTreeNode(c, NodeTypeLocalRef);
+            node->type = symbol->type;
             node->u.symbolRef.symbol = symbol;
         }
     }
@@ -1257,25 +1313,22 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
     /* handle function or subroutine arguments or the return value symbol */
     else if (c->currentFunction != c->mainFunction && (symbol = FindArgument(c, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeArgumentRef);
+        node->type = symbol->type;
         node->u.symbolRef.symbol = symbol;
     }
 
     /* handle global symbols */
     else if ((symbol = FindGlobal(c, c->token)) != NULL) {
-        if (symbol->storageClass == SC_CONSTANT) {
-            node = NewParseTreeNode(c, NodeTypeIntegerLit);
-            node->u.integerLit.value = symbol->value;
-        }
-        else {
-            node = NewParseTreeNode(c, NodeTypeGlobalRef);
-            node->u.symbolRef.symbol = symbol;
-        }
+        node = NewParseTreeNode(c, NodeTypeGlobalRef);
+        node->type = symbol->type;
+        node->u.symbolRef.symbol = symbol;
     }
 
     /* handle undefined symbols */
     else {
-        symbol = AddGlobal(c, name, SC_UNKNOWN, TYPE_UNKNOWN, 0);
+        symbol = AddGlobal(c, name, SC_UNKNOWN, &c->unknownType, 0);
         node = NewParseTreeNode(c, NodeTypeGlobalRef);
+        node->type = symbol->type;
         node->u.symbolRef.symbol = symbol;
     }
 
@@ -1287,6 +1340,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr)
 {
     ParseTreeNode *node;
+    ResolveVariableRef(c, expr);
     if (IsIntegerLit(expr)) {
         node = expr;
         switch (op) {
@@ -1301,9 +1355,9 @@ static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *ex
             break;
         }
     }
-    else if (expr->type == TYPE_INTEGER) {
+    else if (expr->type == &c->integerType) {
         node = NewParseTreeNode(c, NodeTypeUnaryOp);
-        node->type = TYPE_INTEGER;
+        node->type = &c->integerType;
         node->u.unaryOp.op = op;
         node->u.unaryOp.expr = expr;
     }
@@ -1318,6 +1372,8 @@ static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *ex
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right)
 {
     ParseTreeNode *node;
+    ResolveVariableRef(c, left);
+    ResolveVariableRef(c, right);
     if (IsIntegerLit(left) && IsIntegerLit(right)) {
         node = left;
         switch (op) {
@@ -1377,17 +1433,25 @@ static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *l
             goto integerOp;
         }
     }
-    else if (left->type == TYPE_INTEGER && right->type == TYPE_INTEGER) {
-integerOp:
-        node = NewParseTreeNode(c, NodeTypeBinaryOp);
-        node->type = TYPE_INTEGER;
-        node->u.binaryOp.op = op;
-        node->u.binaryOp.left = left;
-        node->u.binaryOp.right = right;
-    }
     else {
-        ParseError(c, "Expecting a numeric expression");
-        node = NULL; /* not reached */
+        if (left->type == &c->integerType) {
+            if (right->type == &c->integerType) {
+integerOp:
+                node = NewParseTreeNode(c, NodeTypeBinaryOp);
+                node->type = &c->integerType;
+                node->u.binaryOp.op = op;
+                node->u.binaryOp.left = left;
+                node->u.binaryOp.right = right;
+            }
+            else {
+                ParseError(c, "Expecting right operand to be anumeric expression: %d", right->nodeType);
+                node = NULL; /* not reached */
+            }
+        }
+        else {
+            ParseError(c, "Expecting left operand to be a numeric expression: %d", left->nodeType);
+            node = NULL; /* not reached */
+        }
     }
     return node;
 }

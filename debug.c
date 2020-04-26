@@ -7,8 +7,28 @@
 #include <stdlib.h>
 #include "compile.h"
 
+/* local variables */
+static char *storageClassNames[] = {
+    "unknown",
+    "constant",
+    "variable"
+};
+
+static char *typeNames[] = {
+    "unknown",
+    "integer",
+    "byte",
+    "string",
+    "array",
+    "struct",
+    "pointer",
+    "function",
+};
+
 /* local function prototypes */
 static void PrintNodeList(NodeListEntry *entry, int indent);
+static char *StorageClassName(StorageClass storageClass);
+static char *TypeName(TypeID typeID);
 
 void PrintNode(ParseTreeNode *node, int indent)
 {
@@ -97,12 +117,17 @@ void PrintNode(ParseTreeNode *node, int indent)
         break;
     case NodeTypeGlobalRef:
         printf("GlobalRef: %s\n", node->u.symbolRef.symbol->name);
+        printf("%*sstorageClass %s\n", indent + 2, "", StorageClassName(node->u.symbolRef.symbol->storageClass));
+        if (node->u.symbolRef.symbol->type)
+            printf("%*stypeID %s\n", indent + 2, "", TypeName(node->u.symbolRef.symbol->type->id));
+        else
+            printf("%*stypeID <none>\n", indent + 2, "");
         break;
     case NodeTypeArgumentRef:
-        printf("ArgumentRef: " INT_FMT "\n", node->u.symbolRef.symbol->value);
+        printf("ArgumentRef: %s (" INT_FMT ")\n", node->u.symbolRef.symbol->name, node->u.symbolRef.symbol->value);
         break;
     case NodeTypeLocalRef:
-        printf("LocalRef: " INT_FMT "\n", node->u.symbolRef.symbol->value);
+        printf("LocalRef: %s (" INT_FMT ")\n", node->u.symbolRef.symbol->name, node->u.symbolRef.symbol->value);
         break;
     case NodeTypeStringLit:
 		printf("StringLit: '%s'\n",node->u.stringLit.string->data);
@@ -156,4 +181,15 @@ static void PrintNodeList(NodeListEntry *entry, int indent)
         entry = entry->next;
     }
 }
+
+static char *StorageClassName(StorageClass storageClass)
+{
+    return storageClass < _SC_MAX ? storageClassNames[storageClass] : "<invalid>";
+}
+
+static char *TypeName(TypeID typeID)
+{
+    return typeID < _TYPE_MAX ? typeNames[typeID] : "<invalid>";
+}
+
 

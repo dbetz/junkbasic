@@ -102,7 +102,8 @@ struct String {
 typedef enum {
     SC_UNKNOWN,
     SC_CONSTANT,
-    SC_VARIABLE
+    SC_VARIABLE,
+    _SC_MAX
 } StorageClass;
 
 /* symbol types */
@@ -112,9 +113,40 @@ typedef enum {
     TYPE_BYTE,
     TYPE_STRING,
     TYPE_ARRAY,
+    TYPE_STRUCT,
     TYPE_POINTER,
-    TYPE_FUNCTION
-} Type;
+    TYPE_FUNCTION,
+    _TYPE_MAX
+} TypeID;
+
+typedef struct Type Type;
+typedef struct Field Field;
+
+struct Type {
+    TypeID id;
+    union {
+        struct {
+            Type *returnType;
+        } functionInfo;
+        struct {
+            Type *elementType;
+            VMVALUE size;
+        } arrayInfo;
+        struct {
+            Field *fields;
+        } structInfo;
+        struct {
+            Type *targetType;
+        } pointerInfo;
+    } u;
+};
+
+struct Field {
+    Field *next;
+    Type *type;
+    VMVALUE offset;
+    char name[1];
+};
 
 /* symbol table */
 struct SymbolTable {
@@ -127,7 +159,7 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
-    Type type;
+    Type *type;
     int placed;
     VMVALUE value;
     char name[1];
@@ -149,6 +181,10 @@ typedef struct {
     Block blockBuf[10];             /* parse - stack of nested blocks */
     Block *bptr;                    /* parse - current block */
     Block *btop;                    /* parse - top of block stack */
+    Type unknownType;               /* parse - unknown type */
+    Type integerType;               /* parse - integer type */
+    Type stringType;                /* parse - string type */
+    Type integerFunctionType;       /* parse - integer function type */
 } ParseContext;
 
 /* parse tree node types */
@@ -181,7 +217,7 @@ typedef enum {
 /* parse tree node structure */
 struct ParseTreeNode {
     NodeType nodeType;
-    Type type;
+    Type *type;
     union {
         struct {
             Symbol *symbol;
@@ -292,9 +328,9 @@ void ParseError(ParseContext *c, const char *fmt, ...);
 
 /* symbols.c */
 void InitSymbolTable(SymbolTable *table);
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
-Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
-Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value);
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value);
+Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value);
+Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value);
 Symbol *FindGlobal(ParseContext *c, const char *name);
 Symbol *FindArgument(ParseContext *c, const char *name);
 Symbol *FindLocal(ParseContext *c, const char *name);

@@ -7,6 +7,22 @@
 
 #define MAXTOKEN        32
 
+typedef struct {
+    int lineNumber;
+    int length;
+    char text[1];
+} Line;
+
+typedef struct {
+    System *sys;
+#ifdef LOAD_SAVE
+    char programName[FILENAME_MAX];
+#endif
+    uint8_t *buffer;
+    uint8_t *bufferTop;
+    Line *currentLine;
+} EditBuf;
+
 /* command handlers */
 static void DoNew(EditBuf *buf);
 static void DoList(EditBuf *buf);

@@ -10,7 +10,7 @@
 #include "compile.h"
 
 /* local function prototypes */
-static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type type, VMVALUE value);
+static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type *type, VMVALUE value);
 static Symbol *FindSymbol(SymbolTable *table, const char *name);
 
 /* InitSymbolTable - initialize a symbol table */
@@ -22,7 +22,7 @@ void InitSymbolTable(SymbolTable *table)
 }
 
 /* AddGlobal - add a global symbol to the symbol table */
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value)
 {
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
@@ -30,6 +30,7 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
     /* allocate the symbol structure */
     sym = (Symbol *)AllocateHighMemory(c->sys, size);
     strcpy(sym->name, name);
+    sym->placed = VMFALSE;
     sym->storageClass = storageClass;
     sym->value = value;
     sym->next = NULL;
@@ -44,19 +45,19 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
 }
 
 /* AddArgument - add an argument symbol to symbol table */
-Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
+Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value)
 {
     return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.arguments, name, storageClass, type, value);
 }
 
 /* AddLocal - add a local symbol to the symbol table */
-Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type type, VMVALUE value)
+Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMVALUE value)
 {
     return AddLocalSymbol(c, &c->currentFunction->u.functionDefinition.locals, name, storageClass, type, value);
 }
 
 /* AddLocalSymbol - add a symbol to a local symbol table */
-static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type type, VMVALUE value)
+static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type *type, VMVALUE value)
 {
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
@@ -64,6 +65,7 @@ static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *n
     /* allocate the symbol structure */
     sym = (Symbol *)AllocateLowMemory(c->sys, size);
     strcpy(sym->name, name);
+    sym->placed = VMTRUE;
     sym->storageClass = storageClass;
     sym->type = type;
     sym->value = value;

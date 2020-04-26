@@ -65,7 +65,8 @@ static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
 static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
-static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym);
+static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset);
+static void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
 static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
 static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
@@ -152,6 +153,10 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         pv->fcn = code_global;
         pv->u.sym = expr->u.symbolRef.symbol;
         break;
+    case NodeTypeArgumentRef:
+        pv->fcn = code_local;
+        pv->u.val = -expr->u.symbolRef.symbol->value;
+        break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
         pv->u.val = expr->u.symbolRef.symbol->value;
@@ -223,7 +228,7 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
     if (!(code = StoreByteVector(c, base, codeSize)))
         GenerateError(c, "insufficient memory");
     if (node->u.functionDefinition.symbol)
-        node->u.functionDefinition.symbol->value = code;
+        PlaceSymbol(c, node->u.functionDefinition.symbol, code);
     DecodeFunction(code, sys->freeSpace + code, codeSize);
 }
 
@@ -392,8 +397,10 @@ static void code_call(GenerateContext *c, ParseTreeNode *expr)
 /* code_symbolRef - code a global reference */
 static void code_symbolRef(GenerateContext *c, Symbol *sym)
 {
+    VMUVALUE offset;
     putcbyte(c, OP_LIT);
-    putcword(c, AddSymbolRef(c, sym));
+    offset = codeaddr(c);
+    putcword(c, AddSymbolRef(c, sym, offset));
 }
 
 /* code_arrayref - code an array reference */
@@ -408,13 +415,18 @@ static void code_arrayref(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 /* code_global - compile a global variable reference */
 static void code_global(GenerateContext *c, PValOp fcn, PVAL *pv)
 {
-    code_symbolRef(c, pv->u.sym);
+    Symbol *sym = pv->u.sym;
+    code_symbolRef(c, sym);
     switch (fcn) {
     case PV_LOAD:
-        putcbyte(c, OP_LOAD);
+        if (sym->storageClass == SC_VARIABLE)
+            putcbyte(c, OP_LOAD);
         break;
     case PV_STORE:
-        putcbyte(c, OP_STORE);
+        if (sym->storageClass == SC_VARIABLE)
+            putcbyte(c, OP_STORE);
+        else
+            GenerateFatal(c, "'%s' is not a variable", sym->name);
         break;
     }
 }
@@ -525,13 +537,31 @@ static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 }
 
 /* AddSymbolRef - add a reference to a symbol */
-static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym)
+static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 {
-    if (!sym->placed) {
-        sym->value = StoreVector(c, &sym->value, 1);
+    VMVALUE link;
+
+    /* handle strings that have already been placed */
+    if (sym->placed)
+        return sym->value;
+
+    /* add a new entry to the fixup list */
+    link = sym->value;
+    sym->value = offset;
+    return link;
+}
+
+/* PlaceSymbol - place any global symbols defined in the current function */
+static void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
+{
+    printf("Place %s: %d, " INT_FMT "\n", sym->name, sym->placed, sym->value);
+    if (sym->placed)
+        GenerateFatal(c, "Duplicate definition of '%s'", sym->name);
+    else {
+        fixup(c, sym->value, offset);
         sym->placed = VMTRUE;
+        sym->value = offset;
     }
-    return sym->value;
 }
 
 /* AddStringRef - add a reference to a string in the string table */
@@ -574,5 +604,6 @@ static void GenerateFatal(GenerateContext *c, const char *fmt, ...)
     va_start(ap, fmt);
     VM_printf("fatal: ");
     VM_vprintf(fmt, ap);
+    VM_putchar('\n');
     va_end(ap);
 }
