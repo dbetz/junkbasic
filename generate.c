@@ -37,6 +37,13 @@ struct PVAL {
     } u;
 };
 
+static struct {
+    Symbol *symbol;
+    VMVALUE code;
+    size_t codeLen;
+} functions[100];
+static int functionCount = 0;
+
 /* local function prototypes */
 static void code_lvalue(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_rvalue(GenerateContext *c, ParseTreeNode *expr);
@@ -73,11 +80,21 @@ static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
+void DumpFunctions(GenerateContext *c)
+{
+    int i;
+    for (i = 0; i < functionCount; ++i) {
+        VM_printf("function '%s':\n", functions[i].symbol ? functions[i].symbol->name : "<main>");
+        DecodeFunction(functions[i].code, c->codeBuf + functions[i].code, functions[i].codeLen);
+        VM_printf("\n");
+    }
+}
+
 /* InitGenerateContext - initialize a generate context */
 GenerateContext *InitGenerateContext(System *sys)
 {
     GenerateContext *g;
-    if (!(g = (GenerateContext *)AllocateLowMemory(sys, sizeof(GenerateContext))))
+    if (!(g = (GenerateContext *)AllocateHighMemory(sys, sizeof(GenerateContext))))
         return NULL;
     g->sys = sys;
     g->codeBuf = sys->nextLow;
@@ -215,8 +232,8 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
 {
     System *sys = c->sys;
     uint8_t *base = sys->nextLow;
-    VMVALUE code;
     size_t codeSize;
+    VMVALUE code = codeaddr(c);
     putcbyte(c, OP_FRAME);
     putcbyte(c, F_SIZE + node->u.functionDefinition.localOffset);
     code_statement_list(c, node->u.functionDefinition.bodyStatements);
@@ -225,11 +242,12 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
     else
         putcbyte(c, OP_HALT);
     codeSize = sys->nextLow - base;
-    if (!(code = StoreByteVector(c, base, codeSize)))
-        GenerateError(c, "insufficient memory");
     if (node->u.functionDefinition.symbol)
         PlaceSymbol(c, node->u.functionDefinition.symbol, code);
-    DecodeFunction(code, sys->freeSpace + code, codeSize);
+    functions[functionCount].symbol = node->u.functionDefinition.symbol;
+    functions[functionCount].code = code;
+    functions[functionCount].codeLen = codeSize;
+    ++functionCount;
 }
 
 /* code_if_statement - generate code for an IF statement */
@@ -520,6 +538,7 @@ static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 {
     while (chn != 0) {
         int nxt = rd_cword(c, chn);
+        VM_printf("chn %0*x, nxt %0*x\n", sizeof(VMVALUE) * 2, chn, sizeof(VMVALUE) * 2, nxt);
         wr_cword(c, chn, val);
         chn = nxt;
     }
@@ -554,10 +573,10 @@ static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 /* PlaceSymbol - place any global symbols defined in the current function */
 static void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 {
-    printf("Place %s: %d, " INT_FMT "\n", sym->name, sym->placed, sym->value);
     if (sym->placed)
         GenerateFatal(c, "Duplicate definition of '%s'", sym->name);
     else {
+        VM_printf("Place %s: fixups %0*x, value %0*x\n", sym->name, sizeof(VMVALUE) * 2, sym->value, sizeof(VMVALUE) * 2, offset);
         fixup(c, sym->value, offset);
         sym->placed = VMTRUE;
         sym->value = offset;

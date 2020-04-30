@@ -1,3 +1,12 @@
+/* edit.c - a simple line editor
+ *
+ * Copyright (c) 2020 by David Michael Betz.  All rights reserved.
+ *
+ * This code maintains an edit buffer at the top of memory and hence adjusts the
+ * size of the buffer by moving the start of the buffer rather than the top.
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -131,30 +140,30 @@ static char *EditGetLine(char *buf, int len, int *pLineNumber, void *cookie)
 static void DoRun(EditBuf *buf)
 {
     System *sys = buf->sys;
-    uint8_t *nextLow = sys->nextLow;
     ParseContext *c;
+    
+    sys->nextHigh = buf->buffer;
 
     if (!(c = InitParseContext(sys)))
         VM_printf("insufficient memory");
     else {
-        GetLineHandler *getLine;
-        void *getLineCookie;
+        if (!(c->g = InitGenerateContext(c->sys)))
+            VM_printf("insufficient memory");
+        else {
+            GetLineHandler *getLine = sys->getLine;
+            void *getLineCookie = sys->getLineCookie;
+            
+            sys->getLine = EditGetLine;
+            sys->getLineCookie = buf;
 
-        getLine = sys->getLine;
-        getLineCookie = sys->getLineCookie;
-    
-        sys->getLine = EditGetLine;
-        sys->getLineCookie = buf;
-
-        BufSeekN(buf, 0);
+            BufSeekN(buf, 0);
         
-        Compile(c);
+            Compile(c);
 
-        sys->getLine = getLine;
-        sys->getLineCookie = getLineCookie;
+            sys->getLine = getLine;
+            sys->getLineCookie = getLineCookie;
+        }
     }
-    
-    sys->nextLow = nextLow;
 }
 
 static void DoRenum(EditBuf *buf)
@@ -301,11 +310,11 @@ static int IsBlank(char *p)
 static EditBuf *BufInit(System *sys)
 {
     EditBuf *buf;
-    if (!(buf = (EditBuf *)AllocateLowMemory(sys, sizeof(EditBuf))))
+    if (!(buf = (EditBuf *)AllocateHighMemory(sys, sizeof(EditBuf))))
         return NULL;
     memset(buf, 0, sizeof(EditBuf));
     buf->sys = sys;
-    buf->buffer = sys->nextLow;
+    buf->buffer = sys->nextHigh;
     buf->bufferTop = buf->buffer;
     buf->currentLine = (Line *)buf->buffer;
     return buf;
@@ -313,14 +322,12 @@ static EditBuf *BufInit(System *sys)
 
 static void BufNew(EditBuf *buf)
 {
-    buf->sys->nextLow = buf->buffer;
-    buf->bufferTop = buf->buffer;
+    buf->buffer = buf->bufferTop;
     buf->currentLine = (Line *)buf->buffer;
 }
 
 static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
 {
-    System *sys = buf->sys;
     int newLength = sizeof(Line) + strlen(text);
     int spaceNeeded;
     uint8_t *next;
@@ -342,14 +349,17 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
     }
 
     /* make sure there is enough space */
-    if (buf->sys->nextLow + spaceNeeded > buf->sys->nextHigh)
+    if (buf->buffer - spaceNeeded < buf->sys->nextLow)
         return VMFALSE;
 
     /* make space for the new line */
-    if (next < sys->nextLow && spaceNeeded != 0)
-        memmove(next + spaceNeeded, next, sys->nextLow - next);
-    sys->nextLow += spaceNeeded;
-    buf->bufferTop = sys->nextLow;
+    if (spaceNeeded != 0) {
+        memmove(buf->buffer - spaceNeeded, buf->buffer, next - buf->buffer);
+        buf->buffer -= spaceNeeded;
+    }
+    
+    /* adjust the line start */
+    line = (Line *)((uint8_t *)line - spaceNeeded);
 
     /* insert the new line */
     if (newLength > 0) {
@@ -364,23 +374,19 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
 
 static int BufDeleteLineN(EditBuf *buf, int lineNumber)
 {
-    System *sys = buf->sys;
-    Line *line, *next;
     int spaceFreed;
+    Line *line;
 
     /* find the line to delete */
     if (!FindLineN(buf, lineNumber, &line))
         return VMFALSE;
 
     /* get a pointer to the next line */
-    next = (Line *)((uint8_t *)line + line->length);
     spaceFreed = line->length;
 
     /* remove the line to be deleted */
-    if ((uint8_t *)next < sys->nextLow)
-        memmove(line, next, sys->nextLow - (uint8_t *)next);
-    sys->nextLow -= spaceFreed;
-    buf->bufferTop = sys->nextLow;
+    memmove(buf->buffer + spaceFreed, buf->buffer, (uint8_t *)line - buf->buffer);
+    buf->buffer += spaceFreed;
 
     /* return successfully */
     return VMTRUE;

@@ -22,6 +22,9 @@ typedef struct Symbol Symbol;
 typedef struct ParseTreeNode ParseTreeNode;
 typedef struct NodeListEntry NodeListEntry;
 
+/* code generator context */
+typedef struct GenerateContext GenerateContext;
+
 /* lexical tokens */
 enum {
     T_NONE,
@@ -168,6 +171,7 @@ struct Symbol {
 /* parse context */
 typedef struct {
     System *sys;                    /* system context */
+    GenerateContext *g;             /* generate - generate context */
     int lineNumber;                 /* scan - current line number */
     int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
@@ -292,9 +296,6 @@ struct NodeListEntry {
     NodeListEntry *next;
 };
 
-/* code generator context */
-typedef struct GenerateContext GenerateContext;
-
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
 void Compile(ParseContext *c);
@@ -340,6 +341,7 @@ void DumpSymbols(SymbolTable *table, const char *tag);
 /* generate.c */
 GenerateContext *InitGenerateContext(System *sys);
 void Generate(GenerateContext *c, ParseTreeNode *node);
+void DumpFunctions(GenerateContext *c);
 
 #endif
 

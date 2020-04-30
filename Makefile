@@ -10,7 +10,6 @@ parse.c \
 scan.c \
 symbols.c \
 system.c \
-types.c \
 vmdebug.c \
 vmint.c \
 osint_posix.c

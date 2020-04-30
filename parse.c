@@ -65,7 +65,7 @@ static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr
 /* InitParseContext - parse a statement */
 ParseContext *InitParseContext(System *sys)
 {
-    ParseContext *c = (ParseContext *)AllocateLowMemory(sys, sizeof(ParseContext));
+    ParseContext *c = (ParseContext *)AllocateHighMemory(sys, sizeof(ParseContext));
     if (c) {
         memset(c, 0, sizeof(ParseContext));
         c->sys = sys;
@@ -101,8 +101,6 @@ static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr
 /* Compile - parse a program */
 void Compile(ParseContext *c)
 {
-    System *sys = c->sys;
-    
     /* setup an error target */
     if (setjmp(c->sys->errorTarget) != 0)
         return;
@@ -135,13 +133,10 @@ void Compile(ParseContext *c)
     
     PrintNode(c->mainFunction, 0);
     
-    {
-        GenerateContext *g = InitGenerateContext(sys);
-        if (g) {
-            Generate(g, c->mainFunction);
-        }
-    }
+    /* generate code for the main function */
+    Generate(c->g, c->mainFunction);
     
+    DumpFunctions(c->g);
     DumpSymbols(&c->globals, "Globals");
 }
 
@@ -270,12 +265,7 @@ static void ParseEndFunction(ParseContext *c)
     else if (c->bptr->type != BLOCK_FUNCTION)
         ParseError(c, "function definition not complete");
     PrintNode(c->currentFunction, 0);
-    {
-        GenerateContext *g = InitGenerateContext(c->sys);
-        if (g) {
-            Generate(g, c->currentFunction);
-        }
-    }
+    Generate(c->g, c->currentFunction);
     EndFunction(c);
 }
 
@@ -1474,7 +1464,7 @@ static void PopBlock(ParseContext *c)
 /* NewParseTreeNode - allocate a new parse tree node */
 static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 {
-    ParseTreeNode *node = (ParseTreeNode *)AllocateLowMemory(c->sys, sizeof(ParseTreeNode));
+    ParseTreeNode *node = (ParseTreeNode *)AllocateHighMemory(c->sys, sizeof(ParseTreeNode));
     memset(node, 0, sizeof(ParseTreeNode));
     node->nodeType = type;
     return node;
@@ -1483,7 +1473,7 @@ static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 /* AddNodeToList - add a node to a parse tree node list */
 static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
 {
-    NodeListEntry *entry = (NodeListEntry *)AllocateLowMemory(c->sys, sizeof(NodeListEntry));
+    NodeListEntry *entry = (NodeListEntry *)AllocateHighMemory(c->sys, sizeof(NodeListEntry));
     entry->node = node;
     entry->next = NULL;
     **ppNextEntry = entry;
@@ -1507,7 +1497,7 @@ String *AddString(ParseContext *c, const char *value)
             return str;
 
     /* allocate the string structure */
-    str = (String *)AllocateHighMemory(c->sys, sizeof(String) + strlen(value));
+    str = (String *)AllocateLowMemory(c->sys, sizeof(String) + strlen(value));
     memset(str, 0, sizeof(String));
     strcpy(str->data, value);
     str->next = c->strings;

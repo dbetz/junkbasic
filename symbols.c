@@ -28,7 +28,7 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
     Symbol *sym;
     
     /* allocate the symbol structure */
-    sym = (Symbol *)AllocateHighMemory(c->sys, size);
+    sym = (Symbol *)AllocateLowMemory(c->sys, size);
     strcpy(sym->name, name);
     sym->placed = VMFALSE;
     sym->storageClass = storageClass;
@@ -63,7 +63,7 @@ static Symbol *AddLocalSymbol(ParseContext *c, SymbolTable *table, const char *n
     Symbol *sym;
     
     /* allocate the symbol structure */
-    sym = (Symbol *)AllocateLowMemory(c->sys, size);
+    sym = (Symbol *)AllocateHighMemory(c->sys, size);
     strcpy(sym->name, name);
     sym->placed = VMTRUE;
     sym->storageClass = storageClass;
