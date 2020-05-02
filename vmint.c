@@ -15,10 +15,6 @@
 #include "system.h"
 
 /* prototypes for local functions */
-static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr);
-static VMVALUE LoadByteValue(Interpreter *i, VMUVALUE addr);
-static void StoreValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
-static void StoreByteValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
 static void DoTrap(Interpreter *i, int op);
 
 /* InitInterpreter - initialize the interpreter */
@@ -180,19 +176,19 @@ int Execute(Interpreter *i, VMVALUE mainCode)
             i->tos = tmpb;
             break;
         case OP_LOAD:
-            i->tos = LoadValue(i, (VMUVALUE)i->tos);
+            i->tos = *(VMVALUE *)(i->base + i->tos);
             break;
         case OP_LOADB:
-            i->tos = LoadByteValue(i, (VMUVALUE)i->tos);
+            i->tos = *(i->base + i->tos);
             break;
         case OP_STORE:
             tmp = Pop(i);
-            StoreValue(i, (VMUVALUE)i->tos, tmp);
+            *(VMVALUE *)(i->base + i->tos) = tmp;
             i->tos = Pop(i);
             break;
         case OP_STOREB:
             tmp = Pop(i);
-            StoreByteValue(i, (VMUVALUE)i->tos, tmp);
+            *(i->base + i->tos) = tmp;
             i->tos = Pop(i);
             break;
         case OP_LREF:
@@ -252,30 +248,6 @@ int Execute(Interpreter *i, VMVALUE mainCode)
             break;
         }
     }
-}
-
-static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr)
-{
-    VMVALUE *p = (VMVALUE *)(i->base + addr);
-    return *p;
-}
-
-static VMVALUE LoadByteValue(Interpreter *i, VMUVALUE addr)
-{
-    uint8_t *p = i->base + addr;
-    return *p;
-}
-
-static void StoreValue(Interpreter *i, VMUVALUE addr, VMVALUE value)
-{
-    VMVALUE *p = (VMVALUE *)(i->base + addr);
-    *p = value;
-}
-
-static void StoreByteValue(Interpreter *i, VMUVALUE addr, VMVALUE value)
-{
-    uint8_t *p = i->base + addr;
-    *p = value;
 }
 
 static void DoTrap(Interpreter *i, int op)
