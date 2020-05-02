@@ -26,6 +26,8 @@ ParseContext *InitCompileContext(System *sys)
 /* Compile - parse a program */
 void Compile(ParseContext *c)
 {
+    Symbol *symbol;
+    
     /* setup an error target */
     if (setjmp(c->sys->errorTarget) != 0)
         return;
@@ -61,6 +63,15 @@ void Compile(ParseContext *c)
     /* generate code for the main function */
     Generate(c->g, c->mainFunction);
     
+    /* store all implicitly declared global variables */
+    for (symbol = c->globals.head; symbol != NULL; symbol = symbol->next) {
+        if (symbol->storageClass == SC_VARIABLE && !symbol->placed) {
+            VMVALUE value = 0;
+            VMVALUE addr = StoreVector(c->g, &value, 1);
+            PlaceSymbol(c->g, symbol, addr);
+        }
+    }
+
     DumpFunctions(c->g);
     DumpSymbols(&c->globals, "Globals");
 }

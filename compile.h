@@ -347,6 +347,9 @@ void DumpSymbols(SymbolTable *table, const char *tag);
 /* generate.c */
 GenerateContext *InitGenerateContext(System *sys);
 void Generate(GenerateContext *c, ParseTreeNode *node);
+void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
+VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
+VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
 void DumpFunctions(GenerateContext *c);
 
 #endif

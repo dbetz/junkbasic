@@ -73,10 +73,7 @@ static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset);
-static void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
 static VMUVALUE AddStringRef(GenerateContext *c, String *str);
-static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
-static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
@@ -562,7 +559,7 @@ static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 }
 
 /* PlaceSymbol - place any global symbols defined in the current function */
-static void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
+void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 {
     if (sym->placed)
         GenerateFatal(c, "Duplicate definition of '%s'", sym->name);
@@ -581,17 +578,17 @@ static VMUVALUE AddStringRef(GenerateContext *c, String *str)
 }
 
 /* StoreVector - store a VMVALUE vector */
-static VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size)
+VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size)
 {
     return StoreByteVector(c, (uint8_t *)buf, size * sizeof(VMVALUE));
 }
 
 /* StoreByteVector - store a byte vector */
-static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
+VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
 {
     System *sys = c->sys;
     uint8_t *p;
-    if (!(p = AllocateHighMemory(sys, size)))
+    if (!(p = AllocateLowMemory(sys, size)))
         return 0;
     memcpy(p, buf, size);
     return p - sys->freeSpace;
