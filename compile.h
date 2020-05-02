@@ -24,6 +24,11 @@ typedef struct NodeListEntry NodeListEntry;
 
 /* code generator context */
 typedef struct GenerateContext GenerateContext;
+struct GenerateContext {
+    System *sys;
+    uint8_t *codeBuf;
+};
+
 
 /* lexical tokens */
 enum {
@@ -307,11 +312,7 @@ ParseContext *InitParseContext(System *sys);
 ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
 String *AddString(ParseContext *c, const char *value);
 void DumpStrings(ParseContext *c);
-
-/* statement.c */
 void ParseStatement(ParseContext *c, int tkn);
-
-/* expr.c */
 void ParseRValue(ParseContext *c);
 ParseTreeNode *ParseExpr(ParseContext *c);
 ParseTreeNode *ParsePrimary(ParseContext *c);
@@ -346,7 +347,7 @@ void DumpSymbols(SymbolTable *table, const char *tag);
 
 /* generate.c */
 GenerateContext *InitGenerateContext(System *sys);
-void Generate(GenerateContext *c, ParseTreeNode *node);
+VMVALUE Generate(GenerateContext *c, ParseTreeNode *node);
 void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
 VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
 VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);

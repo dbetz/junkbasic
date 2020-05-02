@@ -19,16 +19,10 @@ typedef struct Interpreter Interpreter;
 /* intrinsic function handler type */
 typedef void IntrinsicFcn(Interpreter *i);
 
-typedef struct ImageHdr ImageHdr;
-struct ImageHdr {
-    VMUVALUE mainCode;
-    VMUVALUE stackSize;
-};
-
 /* interpreter state structure */
 struct Interpreter {
     System *sys;
-    ImageHdr *image;
+    uint8_t *base;
     jmp_buf errorTarget;
     VMVALUE *stack;
     VMVALUE *stackTop;
@@ -66,12 +60,9 @@ struct Interpreter {
 /* prototypes for xbint.c */
 void Fatal(System *sys, const char *fmt, ...);
 
-/* prototypes from db_vmimage.c */
-ImageHdr *LoadImage(System *sys, const char *name);
-
 /* prototypes from db_vmint.c */
-Interpreter *InitInterpreter(System *sys, ImageHdr *image);
-int Execute(Interpreter *i, ImageHdr *image);
+Interpreter *InitInterpreter(System *sys, uint8_t *base, int stackSize);
+int Execute(Interpreter *i, VMVALUE mainCode);
 void AbortVM(Interpreter *i, const char *fmt, ...);
 void StackOverflow(Interpreter *i);
 void ShowStack(Interpreter *i);

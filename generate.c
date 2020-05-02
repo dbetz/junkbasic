@@ -8,12 +8,6 @@
 #include "compile.h"
 #include "vmdebug.h"
 
-/* code generator context */
-struct GenerateContext {
-    System *sys;
-    uint8_t *codeBuf;
-};
-
 /* partial value */
 typedef struct PVAL PVAL;
 
@@ -90,10 +84,12 @@ GenerateContext *InitGenerateContext(System *sys)
 }
 
 /* Generate - generate code for a function */
-void Generate(GenerateContext *c, ParseTreeNode *node)
+VMVALUE Generate(GenerateContext *c, ParseTreeNode *node)
 {
+    VMVALUE code = codeaddr(c);
     PVAL pv;
     code_expr(c, node, &pv);
+    return code;
 }
 
 /* code_lvalue - generate code for an l-value expression */
@@ -393,7 +389,7 @@ static void code_call(GenerateContext *c, ParseTreeNode *expr)
     code_rvalue(c, expr->u.functionCall.fcn);
 
     /* call the function */
-    putcbyte(c, OP_PUSHJ);
+    putcbyte(c, OP_CALL);
     if (expr->u.functionCall.argc > 0) {
         putcbyte(c, OP_CLEAN);
         putcbyte(c, expr->u.functionCall.argc);

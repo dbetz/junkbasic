@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include "compile.h"
+#include "vmint.h"
 
 /* local function prototypes */
 static void EnterBuiltInSymbols(ParseContext *c);
@@ -26,6 +27,8 @@ ParseContext *InitCompileContext(System *sys)
 /* Compile - parse a program */
 void Compile(ParseContext *c)
 {
+    VMVALUE mainCode;
+    Interpreter *i;
     Symbol *symbol;
     
     /* setup an error target */
@@ -61,7 +64,7 @@ void Compile(ParseContext *c)
     PrintNode(c->mainFunction, 0);
     
     /* generate code for the main function */
-    Generate(c->g, c->mainFunction);
+    mainCode = Generate(c->g, c->mainFunction);
     
     /* store all implicitly declared global variables */
     for (symbol = c->globals.head; symbol != NULL; symbol = symbol->next) {
@@ -74,6 +77,12 @@ void Compile(ParseContext *c)
 
     DumpFunctions(c->g);
     DumpSymbols(&c->globals, "Globals");
+    
+    if (!(i = InitInterpreter(c->sys, c->g->codeBuf, 1024)))
+        VM_printf("insufficient memory");
+    else {
+        Execute(i, mainCode);
+    }
 }
 
 /* EnterBuiltInSymbols - enter the built-in symbols */

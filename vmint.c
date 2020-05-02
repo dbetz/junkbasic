@@ -15,54 +15,47 @@
 #include "system.h"
 
 /* prototypes for local functions */
-static uint8_t *MapAddress(Interpreter *i, VMUVALUE addr);
 static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr);
 static VMVALUE LoadByteValue(Interpreter *i, VMUVALUE addr);
 static void StoreValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
 static void StoreByteValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
 static void DoTrap(Interpreter *i, int op);
-static void PrintC(Interpreter *i, int ch);
 
 /* InitInterpreter - initialize the interpreter */
-Interpreter *InitInterpreter(System *sys, ImageHdr *image)
+Interpreter *InitInterpreter(System *sys, uint8_t *base, int stackSize)
 {
     Interpreter *i;
-#if 0
     
-    if (!(i = (Interpreter *)GlobalAlloc(sys, sizeof(Interpreter))))
+    if (!(i = (Interpreter *)AllocateLowMemory(sys, sizeof(Interpreter))))
         return NULL;
         
-    if (!(i->stack = (VMVALUE *)GlobalAlloc(sys, image->stackSize * sizeof(VMVALUE))))
+    if (!(i->stack = (VMVALUE *)AllocateLowMemory(sys, stackSize * sizeof(VMVALUE))))
         return NULL;
         
-#endif
-    i->image = image;
-    i->stackTop = i->stack + image->stackSize;
+    i->base = base;
+    i->stackTop = i->stack + stackSize;
     
     return i;
 }
 
 /* Execute - execute the main code */
-int Execute(Interpreter *i, ImageHdr *image)
+int Execute(Interpreter *i, VMVALUE mainCode)
 {
     VMVALUE tmp;
     int8_t tmpb;
     int cnt;
 
-	/* setup the new image */
-	i->image = image;
-
     /* initialize */    
-    i->pc = (uint8_t *)MapAddress(i, i->image->mainCode);
+    i->pc = i->base + mainCode;
     i->sp = i->fp = i->stackTop;
 
     if (setjmp(i->errorTarget))
         return VMFALSE;
 
     for (;;) {
-#if 0
+#if 1
         ShowStack(i);
-        DecodeInstruction(UnmapAddress(i, i->pc), i->pc);
+        DecodeInstruction(i->pc - i->base, i->pc);
 #endif
         switch (VMCODEBYTE(i->pc++)) {
         case OP_HALT:
@@ -216,14 +209,10 @@ int Execute(Interpreter *i, ImageHdr *image)
             tmp = Pop(i);
             i->tos = tmp + i->tos * sizeof (VMVALUE);
             break;
-        case OP_PUSHJ:
-            tmp = (VMVALUE)(i->pc - (uint8_t *)i->image);
-            i->pc = (uint8_t *)MapAddress(i, i->tos);
+        case OP_CALL:
+            tmp = (VMVALUE)(i->pc - (uint8_t *)i->base);
+            i->pc = i->base + i->tos;
             i->tos = tmp;
-            break;
-        case OP_POPJ:
-            i->pc = (uint8_t *)i->image + i->tos;
-            i->tos = Pop(i);
             break;
         case OP_CLEAN:
             cnt = VMCODEBYTE(i->pc++);
@@ -241,7 +230,7 @@ int Execute(Interpreter *i, ImageHdr *image)
             i->tos = 0;
             // fall through
         case OP_RETURN:
-            i->pc = (uint8_t *)i->image + Top(i);
+            i->pc = (uint8_t *)i->base + Top(i);
             i->sp = i->fp;
             i->fp = (VMVALUE *)(i->stack + i->fp[F_FP]);
             break;
@@ -265,45 +254,27 @@ int Execute(Interpreter *i, ImageHdr *image)
     }
 }
 
-static uint8_t *MapAddress(Interpreter *i, VMUVALUE addr)
-{
-#if 0
-    int j;
-    for (j = 0; j < i->image->sectionCount; ++j) {
-        ImageSection *section = &i->image->sections[j];
-        VMUVALUE base = section->fileSection->base;
-        if (addr >= base && addr < base + 0x10000000) {
-            if (addr > base + section->fileSection->size)
-                AbortVM(i, "address error");
-            return (uint8_t *)(section->data + (addr - base));
-        }
-    }
-    AbortVM(i, "address error");
-#endif
-    return NULL; // not reached
-}
-
 static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr)
 {
-    VMVALUE *p = (VMVALUE *)MapAddress(i, addr);
+    VMVALUE *p = (VMVALUE *)(i->base + addr);
     return *p;
 }
 
 static VMVALUE LoadByteValue(Interpreter *i, VMUVALUE addr)
 {
-    uint8_t *p = MapAddress(i, addr);
+    uint8_t *p = i->base + addr;
     return *p;
 }
 
 static void StoreValue(Interpreter *i, VMUVALUE addr, VMVALUE value)
 {
-    VMVALUE *p = (VMVALUE *)MapAddress(i, addr);
+    VMVALUE *p = (VMVALUE *)(i->base + addr);
     *p = value;
 }
 
 static void StoreByteValue(Interpreter *i, VMUVALUE addr, VMVALUE value)
 {
-    uint8_t *p = MapAddress(i, addr);
+    uint8_t *p = i->base + addr;
     *p = value;
 }
 
@@ -315,18 +286,13 @@ static void DoTrap(Interpreter *i, int op)
         i->tos = VM_getchar();
         break;
     case TRAP_PutChar:
-        PrintC(i, i->tos);
+        VM_putchar(i->tos);
         i->tos = Pop(i);
         break;
     default:
         AbortVM(i, "undefined print opcode 0x%02x", op);
         break;
     }
-}
-
-static void PrintC(Interpreter *i, int ch)
-{
-    VM_putchar(ch);
 }
 
 void ShowStack(Interpreter *i)
