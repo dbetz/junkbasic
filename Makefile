@@ -3,6 +3,7 @@ P2CC=fastspin
 TARGET=junkbasic
 
 SRCS=\
+compile.c \
 debug.c \
 edit.c \
 generate.c \

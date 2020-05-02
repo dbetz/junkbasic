@@ -7,10 +7,36 @@
 #include <stdlib.h>
 #include "compile.h"
 
+/* node type names */
+static char *nodeTypeNames[] = {
+    "NodeTypeFunctionDefinition",
+    "NodeTypeLetStatement",
+    "NodeTypeIfStatement",
+    "NodeTypeForStatement",
+    "NodeTypeDoWhileStatement",
+    "NodeTypeDoUntilStatement",
+    "NodeTypeLoopStatement",
+    "NodeTypeLoopWhileStatement",
+    "NodeTypeLoopUntilStatement",
+    "NodeTypeReturnStatement",
+    "NodeTypeEndStatement",
+    "NodeTypeCallStatement",
+    "NodeTypeGlobalRef",
+    "NodeTypeArgumentRef",
+    "NodeTypeLocalRef",
+    "NodeTypeStringLit",
+    "NodeTypeIntegerLit",
+    "NodeTypeUnaryOp",
+    "NodeTypeBinaryOp",
+    "NodeTypeArrayRef",
+    "NodeTypeFunctionCall",
+    "NodeTypeDisjunction",
+    "NodeTypeConjunction"
+};
+
 /* local function prototypes */
 static void ParseFunction(ParseContext *c);
 static void ParseEndFunction(ParseContext *c);
-static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
 static void EndFunction(ParseContext *c);
 static void ParseDim(ParseContext *c);
 static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize);
@@ -55,12 +81,9 @@ static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *ex
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
 static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
 static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node);
+static char *NodeTypeName(NodeType type);
 static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node);
 static void PopBlock(ParseContext *c);
-
-static void EnterBuiltInSymbols(ParseContext *c);
-static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr);
-static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr);
 
 /* InitParseContext - parse a statement */
 ParseContext *InitParseContext(System *sys)
@@ -76,68 +99,6 @@ ParseContext *InitParseContext(System *sys)
         c->integerFunctionType.u.functionInfo.returnType = &c->integerType;
     }
     return c;
-}
-
-/* EnterBuiltInSymbols - enter the built-in symbols */
-static void EnterBuiltInSymbols(ParseContext *c)
-{
-    EnterBuiltInFunction(c, "printInt",  (VMVALUE)0);
-    EnterBuiltInFunction(c, "printStr",  (VMVALUE)0);
-    EnterBuiltInFunction(c, "printNL",  (VMVALUE)0);
-}
-
-/* EnterBuiltInVariable - enter a built-in variable */
-static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr)
-{
-    AddGlobal(c, name, SC_VARIABLE, &c->integerType, addr);
-}
-
-/* EnterBuiltInFunction - enter a built-in function */
-static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr)
-{
-    AddGlobal(c, name, SC_CONSTANT, &c->integerFunctionType, addr);
-}
-
-/* Compile - parse a program */
-void Compile(ParseContext *c)
-{
-    /* setup an error target */
-    if (setjmp(c->sys->errorTarget) != 0)
-        return;
-
-    /* initialize the string table */
-    c->strings = NULL;
-
-    /* initialize block nesting table */
-    c->btop = (Block *)((char *)c->blockBuf + sizeof(c->blockBuf));
-    c->bptr = &c->blockBuf[0] - 1;
-
-    /* create the main function */
-    c->mainFunction = StartFunction(c, NULL);
-    
-    /* initialize the global symbol table */
-    InitSymbolTable(&c->globals);
-    
-    /* enter the built-in symbols */
-    EnterBuiltInSymbols(c);
-
-    /* initialize scanner */
-    InitScan(c);
-    
-    /* parse the program */
-    while (GetLine(c->sys, &c->lineNumber)) {
-        int tkn;
-        if ((tkn = GetToken(c)) != T_EOL)
-            ParseStatement(c, tkn);
-    }
-    
-    PrintNode(c->mainFunction, 0);
-    
-    /* generate code for the main function */
-    Generate(c->g, c->mainFunction);
-    
-    DumpFunctions(c->g);
-    DumpSymbols(&c->globals, "Globals");
 }
 
 /* ParseStatement - parse a statement */
@@ -229,11 +190,10 @@ static void ParseFunction(ParseContext *c)
 
     /* enter the function name in the global symbol table */
     if (!(symbol = FindGlobal(c, c->token)))
-        symbol = AddGlobal(c, c->token, SC_CONSTANT, &c->integerFunctionType, 0);
+        symbol = AddGlobal(c, c->token, SC_FUNCTION, &c->integerFunctionType, 0);
     else {
-        if (symbol->storageClass != SC_CONSTANT || symbol->type != &c->integerFunctionType || symbol->placed)
+        if (symbol->storageClass != SC_FUNCTION || symbol->type != &c->integerFunctionType || symbol->placed)
             ParseError(c, "invalid definition of a forward referenced function");
-        symbol->storageClass = SC_CONSTANT;
     }
     
     /* create the function node */
@@ -270,7 +230,7 @@ static void ParseEndFunction(ParseContext *c)
 }
 
 /* StartFunction - start a function definition */
-static ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
+ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionDefinition);
     node->u.functionDefinition.symbol = symbol;
@@ -489,6 +449,7 @@ static void ParseImpliedLetOrFunctionCall(ParseContext *c)
     ParseTreeNode *node, *expr;
     int tkn;
     expr = ParsePrimary(c);
+    ResolveVariableRef(c, expr);
     switch (tkn = GetToken(c)) {
     case '=':
         node = NewParseTreeNode(c, NodeTypeLetStatement);
@@ -510,6 +471,7 @@ static void ParseLet(ParseContext *c)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeLetStatement);
     node->u.letStatement.lvalue = ParsePrimary(c);
+    ResolveVariableRef(c, node->u.letStatement.lvalue);
     FRequire(c, '=');
     node->u.letStatement.rvalue = ParseExpr(c);
     AddNodeToList(c, &c->bptr->pNextStatement, node);
@@ -1254,6 +1216,8 @@ static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveVariableRef - resolve an unknown global reference to a variable reference */
 static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 {
+    printf("ResolveVariableRef: %s\n", NodeTypeName(node->nodeType));
+    PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
         symbol->storageClass = SC_VARIABLE;
@@ -1264,11 +1228,11 @@ static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveFunctionRef - resolve an unknown global symbol reference to a function reference */
 static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node)
 {
-    printf("ResolveFunctionRef: nodeType %d\n", node->nodeType);
+    printf("ResolveFunctionRef: %s\n", NodeTypeName(node->nodeType));
     PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
-        symbol->storageClass = SC_CONSTANT;
+        symbol->storageClass = SC_FUNCTION;
         symbol->type = &c->integerFunctionType;
     }
 }
@@ -1309,9 +1273,16 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
 
     /* handle global symbols */
     else if ((symbol = FindGlobal(c, c->token)) != NULL) {
-        node = NewParseTreeNode(c, NodeTypeGlobalRef);
-        node->type = symbol->type;
-        node->u.symbolRef.symbol = symbol;
+        if (symbol->storageClass == SC_CONSTANT) {
+            node = NewParseTreeNode(c, NodeTypeIntegerLit);
+            node->type = &c->integerType;
+            node->u.integerLit.value = symbol->value;
+        }
+        else {
+            node = NewParseTreeNode(c, NodeTypeGlobalRef);
+            node->type = symbol->type;
+            node->u.symbolRef.symbol = symbol;
+        }
     }
 
     /* handle undefined symbols */
@@ -1478,6 +1449,12 @@ static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTr
     entry->next = NULL;
     **ppNextEntry = entry;
     *ppNextEntry = &entry->next;
+}
+
+/* NodeTypeName - get the name of a node type */
+static char *NodeTypeName(NodeType type)
+{
+	return type >= 0 && type < _MaxNodeType ? nodeTypeNames[type] : "<unknown>";
 }
 
 /* IsIntegerLit - check to see if a node is an integer literal */

@@ -143,27 +143,23 @@ static void DoRun(EditBuf *buf)
     ParseContext *c;
     
     sys->nextHigh = buf->buffer;
+    sys->nextLow = sys->freeSpace;
 
-    if (!(c = InitParseContext(sys)))
+    if (!(c = InitCompileContext(sys)))
         VM_printf("insufficient memory");
-    else {
-        if (!(c->g = InitGenerateContext(c->sys)))
-            VM_printf("insufficient memory");
-        else {
-            GetLineHandler *getLine = sys->getLine;
-            void *getLineCookie = sys->getLineCookie;
-            
-            sys->getLine = EditGetLine;
-            sys->getLineCookie = buf;
-
-            BufSeekN(buf, 0);
         
-            Compile(c);
+    GetLineHandler *getLine = sys->getLine;
+    void *getLineCookie = sys->getLineCookie;
+    
+    sys->getLine = EditGetLine;
+    sys->getLineCookie = buf;
 
-            sys->getLine = getLine;
-            sys->getLineCookie = getLineCookie;
-        }
-    }
+    BufSeekN(buf, 0);
+
+    Compile(c);
+
+    sys->getLine = getLine;
+    sys->getLineCookie = getLineCookie;
 }
 
 static void DoRenum(EditBuf *buf)

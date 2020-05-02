@@ -106,6 +106,7 @@ typedef enum {
     SC_UNKNOWN,
     SC_CONSTANT,
     SC_VARIABLE,
+    SC_FUNCTION,
     _SC_MAX
 } StorageClass;
 
@@ -215,7 +216,8 @@ typedef enum {
     NodeTypeArrayRef,
     NodeTypeFunctionCall,
     NodeTypeDisjunction,
-    NodeTypeConjunction
+    NodeTypeConjunction,
+    _MaxNodeType
 } NodeType;
 
 /* parse tree node structure */
@@ -296,9 +298,13 @@ struct NodeListEntry {
     NodeListEntry *next;
 };
 
+/* compile.c */
+ParseContext *InitCompileContext(System *sys);
+void Compile(ParseContext *c);
+
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
-void Compile(ParseContext *c);
+ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
 String *AddString(ParseContext *c, const char *value);
 void DumpStrings(ParseContext *c);
 

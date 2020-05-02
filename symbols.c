@@ -117,6 +117,6 @@ void DumpSymbols(SymbolTable *table, const char *tag)
     if ((sym = table->head) != NULL) {
         VM_printf("%s:\n", tag);
         for (; sym != NULL; sym = sym->next)
-            VM_printf("  %s %08x\n", sym->name, sym->value);
+            VM_printf("  %s %08x%s\n", sym->name, sym->value, sym->placed ? "" : " <undefined>");
     }
 }

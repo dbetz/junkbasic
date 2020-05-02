@@ -80,16 +80,6 @@ static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
-void DumpFunctions(GenerateContext *c)
-{
-    int i;
-    for (i = 0; i < functionCount; ++i) {
-        VM_printf("function '%s':\n", functions[i].symbol ? functions[i].symbol->name : "<main>");
-        DecodeFunction(functions[i].code, c->codeBuf + functions[i].code, functions[i].codeLen);
-        VM_printf("\n");
-    }
-}
-
 /* InitGenerateContext - initialize a generate context */
 GenerateContext *InitGenerateContext(System *sys)
 {
@@ -98,6 +88,7 @@ GenerateContext *InitGenerateContext(System *sys)
         return NULL;
     g->sys = sys;
     g->codeBuf = sys->nextLow;
+    functionCount = 0;
     return g;
 }
 
@@ -604,6 +595,17 @@ static VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size)
         return 0;
     memcpy(p, buf, size);
     return p - sys->freeSpace;
+}
+
+/* DumpFunctions - dump function definitions */
+void DumpFunctions(GenerateContext *c)
+{
+    int i;
+    for (i = 0; i < functionCount; ++i) {
+        VM_printf("function '%s':\n", functions[i].symbol ? functions[i].symbol->name : "<main>");
+        DecodeFunction(functions[i].code, c->codeBuf + functions[i].code, functions[i].codeLen);
+        VM_printf("\n");
+    }
 }
 
 /* GenerateError - report a code generation error */

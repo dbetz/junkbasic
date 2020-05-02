@@ -39,11 +39,19 @@
 #include <stdint.h>
 #include <string.h>
 
+#if 0
 typedef int64_t VMVALUE;
 typedef uint64_t VMUVALUE;
 
 #define INT_FMT     "%lld"
 #define UINT_FMT    "%llu"
+#else
+typedef int32_t VMVALUE;
+typedef uint32_t VMUVALUE;
+
+#define INT_FMT     "%d"
+#define UINT_FMT    "%u"
+#endif
 
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
