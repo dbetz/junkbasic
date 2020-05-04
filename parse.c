@@ -274,17 +274,12 @@ static void ParseDim(ParseContext *c)
         if (c->currentFunction == c->mainFunction) {
             Symbol *sym;
 
-#if 0
             /* check for initializers */
             if ((tkn = GetToken(c)) == '=') {
                 if (isArray)
                     ParseArrayInitializers(c, size);
-                else {
-                    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
-                    if (dataPtr >= (VMVALUE *)c->ctop)
-                        ParseError(c, "insufficient image space");
-                    *dataPtr = ParseScalarInitializer(c);
-                }
+                else
+                    putcword(c->g, ParseScalarInitializer(c));
             }
 
             /* no initializers */
@@ -292,14 +287,13 @@ static void ParseDim(ParseContext *c)
                 ClearArrayInitializers(c, isArray ? size : 1);
                 SaveToken(c, tkn);
             }
-#endif
 
             /* allocate space for the data */
-            //value = (VMVALUE)c->image->free;
-            //c->image->free += size;
+            value = codeaddr(c->g);
             
             /* add the symbol to the global symbol table */
             sym = AddGlobal(c, name, SC_VARIABLE, &c->integerType, value);
+            sym->placed = VMTRUE;
         }
 
         /* otherwise, add to the local symbol table */
@@ -401,9 +395,6 @@ static VMVALUE ParseScalarInitializer(ParseContext *c)
 /* ParseArrayInitializers - parse array initializers */
 static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 {
-#if 0
-    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
-    VMVALUE *dataTop = (VMVALUE *)c->ctop;
     int done = VMFALSE;
     int tkn;
 
@@ -415,7 +406,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         /* look for the first non-blank line */
         while ((tkn = GetToken(c)) == T_EOL) {
-            if (!GetLine(c->sys))
+            if (!GetLine(c->sys, &c->lineNumber))
                 ParseError(c, "unexpected end of file in initializers");
         }
 
@@ -436,9 +427,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
                 ParseError(c, "too many initializers");
 
             /* store the initial value */
-            if (dataPtr >= dataTop)
-                ParseError(c, "insufficient image space");
-            *dataPtr++ = value;
+            putcword(c->g, value);
 
             switch (tkn = GetToken(c)) {
             case T_EOL:
@@ -457,19 +446,13 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         }
     }
-#endif
 }
 
 /* ClearArrayInitializers - clear the array initializers */
 static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 {
-#if 0
-    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
-    VMVALUE *dataTop = (VMVALUE *)c->ctop;
-    if (dataPtr + size > dataTop)
-        ParseError(c, "insufficient image space");
-    memset(dataPtr, 0, size * sizeof(VMVALUE));
-#endif
+    while (--size >= 0)
+        putcword(c->g, 0);
 }
 
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */

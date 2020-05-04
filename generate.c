@@ -60,7 +60,6 @@ static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv);
 static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_global(GenerateContext *c, PValOp fcn, PVAL *pv);
 static void code_local(GenerateContext *c, PValOp fcn, PVAL *pv);
-static VMUVALUE codeaddr(GenerateContext *c);
 static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
 static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
@@ -475,16 +474,16 @@ static void code_index(GenerateContext *c, PValOp fcn, PVAL *pv)
 }
 
 /* codeaddr - get the current code address (actually, offset) */
-static VMUVALUE codeaddr(GenerateContext *c)
+VMVALUE codeaddr(GenerateContext *c)
 {
-    return (VMUVALUE)(c->sys->nextLow - c->codeBuf);
+    return (VMVALUE)(c->sys->nextLow - c->codeBuf);
 }
 
 /* putcbyte - put a code byte into the code buffer */
-VMUVALUE putcbyte(GenerateContext *c, int b)
+VMVALUE putcbyte(GenerateContext *c, int b)
 {
     System *sys = c->sys;
-    VMUVALUE addr = codeaddr(c);
+    VMVALUE addr = codeaddr(c);
     if (sys->nextLow >= sys->nextHigh)
         GenerateFatal(c, "Bytecode buffer overflow");
     *sys->nextLow++ = b;
@@ -492,10 +491,10 @@ VMUVALUE putcbyte(GenerateContext *c, int b)
 }
 
 /* putcword - put a code word into the code buffer */
-VMUVALUE putcword(GenerateContext *c, VMVALUE w)
+VMVALUE putcword(GenerateContext *c, VMVALUE w)
 {
     System *sys = c->sys;
-    VMUVALUE addr = codeaddr(c);
+    VMVALUE addr = codeaddr(c);
     uint8_t *p;
     int cnt = sizeof(VMVALUE);
     if (sys->nextLow + sizeof(VMVALUE) > sys->nextHigh)

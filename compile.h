@@ -356,8 +356,9 @@ void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
 VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
 VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
 void DumpFunctions(GenerateContext *c);
-VMUVALUE putcbyte(GenerateContext *c, int b);
-VMUVALUE putcword(GenerateContext *c, VMVALUE w);
+VMVALUE codeaddr(GenerateContext *c);
+VMVALUE putcbyte(GenerateContext *c, int b);
+VMVALUE putcword(GenerateContext *c, VMVALUE w);
 
 #endif
 
