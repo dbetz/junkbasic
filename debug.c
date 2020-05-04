@@ -110,6 +110,9 @@ void PrintNode(ParseTreeNode *node, int indent)
     case NodeTypeEndStatement:
         printf("End\n");
         break;
+    case NodeTypeAsmStatement:
+        printf("Asm\n");
+        break;
     case NodeTypeCallStatement:
         printf("CallStatement\n");
         printf("%*sexpr\n", indent + 2, "");

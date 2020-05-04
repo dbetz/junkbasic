@@ -44,6 +44,7 @@
 {   "NOT",      T_NOT       },
 {   "RETURN",   T_RETURN    },
 {   "PRINT",    T_PRINT     },
+{   "ASM",      T_ASM       },
 {   NULL,       0           }
 };
 
@@ -151,6 +152,9 @@ char *TokenName(int token)
         break;
     case T_END_IF:
         name = "END IF";
+        break;
+    case T_END_ASM:
+        name = "END ASM";
         break;
     case T_DO_WHILE:
         name = "DO WHILE";
@@ -300,6 +304,9 @@ static int GetToken1(ParseContext *c)
                         break;
                     case T_IF:
                         tkn = T_END_IF;
+                        break;
+                    case T_ASM:
+                        tkn = T_END_ASM;
                         break;
                     default:
                         c->sys->linePtr = savePtr;

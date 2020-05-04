@@ -49,7 +49,7 @@ int Execute(Interpreter *i, VMVALUE mainCode)
         return VMFALSE;
 
     for (;;) {
-#if 1
+#if 0
         ShowStack(i);
         DecodeInstruction(i->pc - i->base, i->pc);
 #endif

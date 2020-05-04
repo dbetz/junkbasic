@@ -1,4 +1,4 @@
-/* parse.c - expression parser
+/* compile.c - compiler
  *
  * Copyright (c) 2020 by David Michael Betz.  All rights reserved.
  *

@@ -50,6 +50,7 @@ static void code_loop_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_loop_while_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_loop_until_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_return_statement(GenerateContext *c, ParseTreeNode *node);
+static void code_asm_statement(GenerateContext *c, ParseTreeNode *node);
 static void code_statement_list(GenerateContext *c, NodeListEntry *entry);
 static void code_shortcircuit(GenerateContext *c, int op, ParseTreeNode *expr);
 static void code_call(GenerateContext *c, ParseTreeNode *expr);
@@ -60,8 +61,6 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_global(GenerateContext *c, PValOp fcn, PVAL *pv);
 static void code_local(GenerateContext *c, PValOp fcn, PVAL *pv);
 static VMUVALUE codeaddr(GenerateContext *c);
-static VMUVALUE putcbyte(GenerateContext *c, int b);
-static VMUVALUE putcword(GenerateContext *c, VMVALUE w);
 static VMVALUE rd_cword(GenerateContext *c, VMUVALUE off);
 static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
@@ -145,6 +144,9 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeReturnStatement:
         code_return_statement(c, expr);
+        break;
+    case NodeTypeAsmStatement:
+        code_asm_statement(c, expr);
         break;
     case NodeTypeCallStatement:
         code_rvalue(c, expr->u.callStatement.expr);
@@ -348,6 +350,17 @@ static void code_return_statement(GenerateContext *c, ParseTreeNode *node)
         putcbyte(c, OP_RETURNZ);
 }
 
+/* code_asm_statement - generate code for an ASM statement */
+static void code_asm_statement(GenerateContext *c, ParseTreeNode *node)
+{
+    System *sys = c->sys;
+    int length = node->u.asmStatement.length;
+    if (sys->nextLow + length > sys->nextHigh)
+        GenerateFatal(c, "insufficient memory");
+    memcpy(sys->nextLow, node->u.asmStatement.code, length);
+    sys->nextLow += length;
+}
+
 /* code_statement_list - code a list of statements */
 static void code_statement_list(GenerateContext *c, NodeListEntry *entry)
 {
@@ -468,7 +481,7 @@ static VMUVALUE codeaddr(GenerateContext *c)
 }
 
 /* putcbyte - put a code byte into the code buffer */
-static VMUVALUE putcbyte(GenerateContext *c, int b)
+VMUVALUE putcbyte(GenerateContext *c, int b)
 {
     System *sys = c->sys;
     VMUVALUE addr = codeaddr(c);
@@ -479,7 +492,7 @@ static VMUVALUE putcbyte(GenerateContext *c, int b)
 }
 
 /* putcword - put a code word into the code buffer */
-static VMUVALUE putcword(GenerateContext *c, VMVALUE w)
+VMUVALUE putcword(GenerateContext *c, VMVALUE w)
 {
     System *sys = c->sys;
     VMUVALUE addr = codeaddr(c);

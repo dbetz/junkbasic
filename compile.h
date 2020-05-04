@@ -59,6 +59,7 @@ enum {
     T_STOP,
     T_RETURN,
     T_PRINT,
+    T_ASM,
     T_END_FUNCTION, /* compound keywords */
     T_END_SUB,
     T_ELSE_IF,
@@ -67,6 +68,7 @@ enum {
     T_DO_UNTIL,
     T_LOOP_WHILE,
     T_LOOP_UNTIL,
+    T_END_ASM,
     T_LE,           /* non-keyword tokens */
     T_NE,
     T_GE,
@@ -211,6 +213,7 @@ typedef enum {
     NodeTypeReturnStatement,
     NodeTypeEndStatement,
     NodeTypeCallStatement,
+    NodeTypeAsmStatement,
     NodeTypeGlobalRef,
     NodeTypeArgumentRef,
     NodeTypeLocalRef,
@@ -265,6 +268,10 @@ struct ParseTreeNode {
             ParseTreeNode *expr;
         } callStatement;
         struct {
+            uint8_t *code;
+            int length;
+        } asmStatement;
+        struct {
             Symbol *symbol;
         } symbolRef;
         struct {
@@ -310,17 +317,14 @@ void Compile(ParseContext *c);
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
 ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
-String *AddString(ParseContext *c, const char *value);
-void DumpStrings(ParseContext *c);
 void ParseStatement(ParseContext *c, int tkn);
-void ParseRValue(ParseContext *c);
-ParseTreeNode *ParseExpr(ParseContext *c);
-ParseTreeNode *ParsePrimary(ParseContext *c);
-ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
-int IsIntegerLit(ParseTreeNode *node);
-ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
-int IsIntegerLit(ParseTreeNode *node);
+VMVALUE ParseIntegerConstant(ParseContext *c);
+ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
+void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node);
 void PrintNode(ParseTreeNode *node, int indent);
+
+/* assemble.c */
+void ParseAsm(ParseContext *c);
 
 /* scan.c */
 void InitScan(ParseContext *c);
@@ -352,6 +356,8 @@ void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset);
 VMVALUE StoreVector(GenerateContext *c, const VMVALUE *buf, int size);
 VMVALUE StoreByteVector(GenerateContext *c, const uint8_t *buf, int size);
 void DumpFunctions(GenerateContext *c);
+VMUVALUE putcbyte(GenerateContext *c, int b);
+VMUVALUE putcword(GenerateContext *c, VMVALUE w);
 
 #endif
 

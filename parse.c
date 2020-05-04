@@ -35,6 +35,10 @@ static char *nodeTypeNames[] = {
 };
 
 /* local function prototypes */
+static String *AddString(ParseContext *c, const char *value);
+static ParseTreeNode *ParseExpr(ParseContext *c);
+static ParseTreeNode *ParsePrimary(ParseContext *c);
+static ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
 static void ParseFunction(ParseContext *c);
 static void ParseEndFunction(ParseContext *c);
 static void EndFunction(ParseContext *c);
@@ -73,17 +77,17 @@ static ParseTreeNode *ParseExpr11(ParseContext *c);
 static ParseTreeNode *ParseSimplePrimary(ParseContext *c);
 static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayNode);
 static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode);
+static ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
 static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node);
 static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node);
 static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node);
 static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node);
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr);
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
-static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
-static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node);
 static char *NodeTypeName(NodeType type);
 static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node);
 static void PopBlock(ParseContext *c);
+static int IsIntegerLit(ParseTreeNode *node);
 
 /* InitParseContext - parse a statement */
 ParseContext *InitParseContext(System *sys)
@@ -165,6 +169,9 @@ void ParseStatement(ParseContext *c, int tkn)
         break;
     case T_END:
         ParseEnd(c);
+        break;
+    case T_ASM:
+        ParseAsm(c);
         break;
     default:
         SaveToken(c, tkn);
@@ -791,8 +798,18 @@ static void ParseEnd(ParseContext *c)
     FRequire(c, T_EOL);
 }
 
+/* ParseIntegerConstant - parse an integer constant expression */
+VMVALUE ParseIntegerConstant(ParseContext *c)
+{
+    ParseTreeNode *expr;
+    expr = ParseExpr(c);
+    if (!IsIntegerLit(expr))
+        ParseError(c, "expecting an integer constant expression");
+    return expr->u.integerLit.value;
+}
+
 /* ParseExpr - handle the OR operator */
-ParseTreeNode *ParseExpr(ParseContext *c)
+static ParseTreeNode *ParseExpr(ParseContext *c)
 {
     ParseTreeNode *node;
     int tkn;
@@ -1245,7 +1262,7 @@ static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node)
 }
 
 /* GetSymbolRef - setup a symbol reference */
-ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
+static ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name)
 {
     ParseTreeNode *node;
     Symbol *symbol;
@@ -1433,7 +1450,7 @@ static void PopBlock(ParseContext *c)
 }
 
 /* NewParseTreeNode - allocate a new parse tree node */
-static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
+ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 {
     ParseTreeNode *node = (ParseTreeNode *)AllocateHighMemory(c->sys, sizeof(ParseTreeNode));
     memset(node, 0, sizeof(ParseTreeNode));
@@ -1442,7 +1459,7 @@ static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 }
 
 /* AddNodeToList - add a node to a parse tree node list */
-static void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
+void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
 {
     NodeListEntry *entry = (NodeListEntry *)AllocateHighMemory(c->sys, sizeof(NodeListEntry));
     entry->node = node;
@@ -1458,13 +1475,13 @@ static char *NodeTypeName(NodeType type)
 }
 
 /* IsIntegerLit - check to see if a node is an integer literal */
-int IsIntegerLit(ParseTreeNode *node)
+static int IsIntegerLit(ParseTreeNode *node)
 {
     return node->nodeType == NodeTypeIntegerLit;
 }
 
 /* AddString - add a string to the string table */
-String *AddString(ParseContext *c, const char *value)
+static String *AddString(ParseContext *c, const char *value)
 {
     String *str;
     
