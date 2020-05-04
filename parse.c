@@ -306,8 +306,30 @@ static void ParseDim(ParseContext *c)
         else {
             if (isArray)
                 ParseError(c, "local arrays are not supported");
+                
+            /* add a local variable */
             AddLocal(c, name, SC_VARIABLE, &c->integerType, c->currentFunction->u.functionDefinition.localOffset);
             ++c->currentFunction->u.functionDefinition.localOffset;
+            
+            /* check for an initializer */
+            if ((tkn = GetToken(c)) == '=') {
+                ParseTreeNode *expr, *node;
+            
+                /* get the initializer */
+                expr = ParseExpr(c);
+                
+                /* add code to set the initial value of the variable */
+                node = NewParseTreeNode(c, NodeTypeLetStatement);
+                node->u.letStatement.lvalue = GetSymbolRef(c, name);
+                node->u.letStatement.rvalue = expr;
+                AddNodeToList(c, &c->bptr->pNextStatement, node);
+            }
+        
+            /* no initializer */
+            else {
+                SaveToken(c, tkn);
+            }
+                
         }
 
     } while ((tkn = GetToken(c)) == ',');

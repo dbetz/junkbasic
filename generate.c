@@ -158,11 +158,11 @@ static void code_expr(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
         break;
     case NodeTypeArgumentRef:
         pv->fcn = code_local;
-        pv->u.val = -expr->u.symbolRef.symbol->value;
+        pv->u.val = expr->u.symbolRef.symbol->value;
         break;
     case NodeTypeLocalRef:
         pv->fcn = code_local;
-        pv->u.val = expr->u.symbolRef.symbol->value;
+        pv->u.val = -1 - expr->u.symbolRef.symbol->value;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
@@ -223,7 +223,7 @@ static void code_function_definition(GenerateContext *c, ParseTreeNode *node)
     putcbyte(c, OP_FRAME);
     putcbyte(c, F_SIZE + node->u.functionDefinition.localOffset);
     code_statement_list(c, node->u.functionDefinition.bodyStatements);
-    if (node->type)
+    if (node->u.functionDefinition.symbol)
         putcbyte(c, OP_RETURNZ);
     else
         putcbyte(c, OP_HALT);
