@@ -65,7 +65,7 @@ static void wr_cword(GenerateContext *c, VMUVALUE off, VMVALUE w);
 static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static void fixupbranch(GenerateContext *c, VMUVALUE chn, VMUVALUE val);
 static VMVALUE AddSymbolRef(GenerateContext *c, Symbol *sym, VMUVALUE offset);
-static VMUVALUE AddStringRef(GenerateContext *c, String *str);
+static VMVALUE AddStringRef(GenerateContext *c, String *str);
 static void GenerateError(GenerateContext *c, const char *fmt, ...);
 static void GenerateFatal(GenerateContext *c, const char *fmt, ...);
 
@@ -580,9 +580,9 @@ void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
 }
 
 /* AddStringRef - add a reference to a string in the string table */
-static VMUVALUE AddStringRef(GenerateContext *c, String *str)
+static VMVALUE AddStringRef(GenerateContext *c, String *str)
 {
-    return (uint8_t *)str->data - c->sys->freeSpace;
+    return (VMVALUE)((uint8_t *)str->data - c->codeBuf);
 }
 
 /* StoreVector - store a VMVALUE vector */

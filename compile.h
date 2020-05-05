@@ -103,8 +103,6 @@ struct Block {
 typedef struct String String;
 struct String {
     String *next;
-    int placed;
-    VMVALUE value;
     char data[1];
 };
 
@@ -322,6 +320,7 @@ VMVALUE ParseIntegerConstant(ParseContext *c);
 ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
 void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node);
 void PrintNode(ParseTreeNode *node, int indent);
+void DumpStrings(ParseContext *c);
 
 /* assemble.c */
 void ParseAsm(ParseContext *c);

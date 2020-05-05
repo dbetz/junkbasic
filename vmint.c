@@ -49,7 +49,7 @@ int Execute(Interpreter *i, VMVALUE mainCode)
         return VMFALSE;
 
     for (;;) {
-#if 1
+#if 0
         ShowStack(i);
         DecodeInstruction(i->pc - i->base, i->pc);
 #endif
@@ -260,6 +260,23 @@ static void DoTrap(Interpreter *i, int op)
     case TRAP_PutChar:
         VM_putchar(i->tos);
         i->tos = Pop(i);
+        break;
+    case TRAP_PrintStr:
+        VM_printf("%s", (char *)(i->base + i->tos));
+        i->tos = *i->sp++;
+        break;
+    case TRAP_PrintInt:
+        VM_printf("%d", i->tos);
+        i->tos = *i->sp++;
+        break;
+    case TRAP_PrintTab:
+        VM_putchar('\t');
+        break;
+    case TRAP_PrintNL:
+        VM_putchar('\n');
+        break;
+    case TRAP_PrintFlush:
+        VM_flush();
         break;
     default:
         AbortVM(i, "undefined print opcode 0x%02x", op);

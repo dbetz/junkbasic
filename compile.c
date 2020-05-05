@@ -77,6 +77,7 @@ void Compile(ParseContext *c)
 
     DumpFunctions(c->g);
     DumpSymbols(&c->globals, "Globals");
+    DumpStrings(c);
     
     if (!(i = InitInterpreter(c->sys, c->g->codeBuf, 1024)))
         VM_printf("insufficient memory");
@@ -88,9 +89,11 @@ void Compile(ParseContext *c)
 /* EnterBuiltInSymbols - enter the built-in symbols */
 static void EnterBuiltInSymbols(ParseContext *c)
 {
+#if 0
     EnterBuiltInFunction(c, "printInt",  (VMVALUE)0);
     EnterBuiltInFunction(c, "printStr",  (VMVALUE)0);
     EnterBuiltInFunction(c, "printNL",  (VMVALUE)0);
+#endif
 }
 
 /* EnterBuiltInVariable - enter a built-in variable */

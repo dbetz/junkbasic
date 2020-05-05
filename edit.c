@@ -94,8 +94,12 @@ void EditWorkspace(System *sys)
                     if (!BufDeleteLineN(editBuf, lineNumber))
                         VM_printf("no line %d\n", lineNumber);
                 }
-                else if (!BufAddLineN(editBuf, lineNumber, sys->linePtr))
-                    VM_printf("out of edit buffer space\n");
+                else {
+                    if (isspace(*sys->linePtr))
+                        ++sys->linePtr;
+                    if (!BufAddLineN(editBuf, lineNumber, sys->linePtr))
+                        VM_printf("out of edit buffer space\n");
+                }
             }
 
             else {
@@ -128,7 +132,7 @@ static void DoList(EditBuf *buf)
     int lineNumber;
     BufSeekN(buf, 0);
     while (BufGetLine(buf, &lineNumber, buf->sys->lineBuf))
-        VM_printf("%d%s", lineNumber, buf->sys->lineBuf);
+        VM_printf("%d %s", lineNumber, buf->sys->lineBuf);
 }
 
 static char *EditGetLine(char *buf, int len, int *pLineNumber, void *cookie)
@@ -193,6 +197,8 @@ static int SetProgramName(EditBuf *buf)
 
 static void DoLoad(EditBuf *buf)
 {
+    int lineNumber = 100;
+    int lineNumberIncrement = 10;
     VMFILE *fp;
     
     /* check for a program name on the command line */
@@ -209,15 +215,8 @@ static void DoLoad(EditBuf *buf)
         VM_printf("Loading '%s'\n", buf->programName);
         BufNew(buf);
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
-            int lineNumber;
-            char *token;
-            sys->linePtr = sys->lineBuf;
-            if ((token = NextToken(sys)) != NULL) {
-                if (ParseNumber(token, &lineNumber))
-                    BufAddLineN(buf, lineNumber, sys->linePtr);
-                else
-                    VM_printf("expecting a line number: %s\n", token);
-            }
+            BufAddLineN(buf, lineNumber, sys->lineBuf);
+            lineNumber += lineNumberIncrement;
         }
         VM_fclose(fp);
     }
@@ -241,12 +240,8 @@ static void DoSave(EditBuf *buf)
         int lineNumber;
         VM_printf("Saving '%s'\n", buf->programName);
         BufSeekN(buf, 0);
-        while (BufGetLine(buf, &lineNumber, sys->lineBuf)) {
-            char buf[32];
-            sprintf(buf, "%d", lineNumber);
-            VM_fputs(buf, fp);
+        while (BufGetLine(buf, &lineNumber, sys->lineBuf))
             VM_fputs(sys->lineBuf, fp);
-        }
         VM_fclose(fp);
     }
 }

@@ -1,9 +1,39 @@
-100 a=1
-110 function foo(x)
-120  return bar(x) + bar(a)
-130 end function
-140 function bar(y)
-150  return y+1
-160 end function
-170 b=2
-180 foo(12)
+a = 1
+
+function printStr(str, chn)
+ asm
+  lref 1
+  trap 2
+ end asm
+end function
+
+function printInt(n, chn)
+ asm
+  lref 1
+  trap 3
+ end asm
+end function
+
+function printNL(chn)
+ asm
+  trap 5
+ end asm
+end function
+
+function foo(x)
+ return bar(x) + bar(a)
+end function
+
+function bar(y)
+ return y + 1
+end function
+
+function baz(q, r)
+  return q * 10 + r
+end function
+
+b = 2
+
+print "Hello, world!"
+print foo(12)
+print baz(4,6)

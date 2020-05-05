@@ -1189,7 +1189,10 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
     if ((tkn = GetToken(c)) != ')') {
         SaveToken(c, tkn);
         do {
-            AddNodeToList(c, &pNext, ParseExpr(c));
+            NodeListEntry *actual = (NodeListEntry *)AllocateHighMemory(c->sys, sizeof(NodeListEntry));
+            actual->node = ParseExpr(c);
+            actual->next = node->u.functionCall.args;
+            node->u.functionCall.args = actual;
             ++node->u.functionCall.argc;
         } while ((tkn = GetToken(c)) == ',');
         Require(c, tkn, ')');
@@ -1505,3 +1508,16 @@ static String *AddString(ParseContext *c, const char *value)
     /* return the string table entry */
     return str;
 }
+
+/* DumpStrings - dump the string table */
+void DumpStrings(ParseContext *c)
+{
+    String *str = c->strings;
+    if (str) {
+        VM_printf("Strings:\n");
+        for (; str != NULL; str = str->next)
+            VM_printf("  '%s' %08x\n", str->data, (VMVALUE)((uint8_t *)str->data - c->g->codeBuf));
+    }
+}
+
+
