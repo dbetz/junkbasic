@@ -35,6 +35,7 @@ static char *nodeTypeNames[] = {
 };
 
 /* local function prototypes */
+static void ParseInclude(ParseContext *c);
 static String *AddString(ParseContext *c, const char *value);
 static ParseTreeNode *ParseExpr(ParseContext *c);
 static ParseTreeNode *ParsePrimary(ParseContext *c);
@@ -110,6 +111,9 @@ void ParseStatement(ParseContext *c, int tkn)
 {
     /* dispatch on the statement keyword */
     switch (tkn) {
+    case T_INCLUDE:
+    	ParseInclude(c);
+    	break;
     case T_REM:
         /* just a comment so ignore the rest of the line */
         break;
@@ -178,6 +182,17 @@ void ParseStatement(ParseContext *c, int tkn)
         ParseImpliedLetOrFunctionCall(c);
         break;
     }
+}
+
+/* ParseInclude - parse the 'INCLUDE' statement */
+static void ParseInclude(ParseContext *c)
+{
+    char name[MAXTOKEN];
+    FRequire(c, T_STRING);
+    strcpy(name, c->token);
+    FRequire(c, T_EOL);
+    if (!PushFile(c->sys, name))
+        ParseError(c, "include file not found: %s", name);
 }
 
 /* ParseFunction - parse the 'FUNCTION' statement */
@@ -597,7 +612,7 @@ static void ParseNext(ParseContext *c)
     case BLOCK_FOR:
         FRequire(c, T_IDENTIFIER);
         //if (GetSymbolRef(c, c->token) != c->bptr->node->u.forStatement.var)
-        //    ParseError(c, "wrong variable in FOR");
+        //    ParseError(c, "wrong variable in NEXT");
         PopBlock(c);
         break;
     default:

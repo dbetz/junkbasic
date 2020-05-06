@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     _setrootvfs(_vfs_open_host());  // to access host files
     //_setrootvfs(_vfs_open_sdcard()); // to access files on SD card
 #endif
-        sys->getLine = GetConsoleLine;
+        sys->mainFile.u.main.getLine = GetConsoleLine;
         EditWorkspace(sys);
     }
     return 0;
@@ -72,6 +72,21 @@ void VM_putchar(int ch)
         putchar('\r');
 #endif
     putchar(ch);
+}
+
+void *VM_open(System *sys, const char *name, const char *mode)
+{
+    return (void *)fopen(name, mode);
+}
+
+char *VM_getline(char *buf, int size, void *fp)
+{
+	return fgets(buf, size, (FILE *)fp);
+}
+
+void VM_close(void *fp)
+{
+    fclose((FILE *)fp);
 }
 
 int VM_opendir(const char *path, VMDIR *dir)

@@ -20,6 +20,7 @@ System *InitSystem(uint8_t *freeSpace, size_t freeSize)
     sys->nextHigh = sys->freeTop;
     sys->heapSize = sys->freeTop - sys->freeSpace;
     sys->maxHeapUsed = 0;
+    sys->currentFile = &sys->mainFile;
     return sys;
 }
 
@@ -48,12 +49,101 @@ void *AllocateLowMemory(System *sys, size_t size)
     return p;
 }
 
+/* GetMainSource - get the main source */
+void GetMainSource(System *sys, GetLineHandler **pGetLine, void **pGetLineCookie)
+{
+    *pGetLine = sys->mainFile.u.main.getLine;
+    *pGetLineCookie = sys->mainFile.u.main.getLineCookie;
+}
+
+/* SetMainSource - set the main source */
+void SetMainSource(System *sys, GetLineHandler *getLine, void *getLineCookie)
+{
+    sys->mainFile.u.main.getLine = getLine;
+    sys->mainFile.u.main.getLineCookie = getLineCookie;
+}
+
+/* PushFile - push a file onto the input file stack */
+int PushFile(System *sys, const char *name)
+{
+    IncludedFile *inc;
+    ParseFile *f;
+    void *fp;
+    
+    /* check to see if the file has already been included */
+    for (inc = sys->includedFiles; inc != NULL; inc = inc->next)
+        if (strcmp(name, inc->name) == 0)
+            return VMTRUE;
+    
+    /* add this file to the list of already included files */
+    if (!(inc = (IncludedFile *)AllocateHighMemory(sys, sizeof(IncludedFile) + strlen(name))))
+        Abort(sys, "insufficient memory");
+    strcpy(inc->name, name);
+    inc->next = sys->includedFiles;
+    sys->includedFiles = inc;
+
+    /* open the input file */
+    if (!(fp = VM_open(sys, name, "r")))
+        return VMFALSE;
+    
+    /* allocate a parse file structure */
+    if (!(f = (ParseFile *)AllocateHighMemory(sys, sizeof(ParseFile))))
+        Abort(sys, "insufficient memory");
+    
+    /* initialize the parse file structure */
+    f->u.file.fp = fp;
+    f->u.file.file = inc;
+    f->u.file.lineNumber = 0;
+    
+    /* push the file onto the input file stack */
+    f->next = sys->currentFile;
+    sys->currentFile = f;
+    
+    /* return successfully */
+    return VMTRUE;
+}
+
 /* GetLine - get the next input line */
 int GetLine(System *sys, int *pLineNumber)
 {
-    if (!(*sys->getLine)(sys->lineBuf, sizeof(sys->lineBuf), pLineNumber, sys->getLineCookie))
-        return VMFALSE;
+    ParseFile *f;
+    int len;
+
+    /* get the next input line */
+    for (;;) {
+        
+        /* get a line from the main input */
+        if ((f = sys->currentFile) == &sys->mainFile) {
+            if ((*f->u.main.getLine)(sys->lineBuf, sizeof(sys->lineBuf) - 1, pLineNumber, f->u.main.getLineCookie))
+                break;
+            else
+                return VMFALSE;
+        }
+        
+        /* get a line from the current include file */
+        else {
+            if (VM_getline(sys->lineBuf, sizeof(sys->lineBuf) - 1, f->u.file.fp)) {
+             	*pLineNumber = ++f->u.file.lineNumber;
+               	break;
+            }
+            else {
+                sys->currentFile = f->next;
+                fclose(f->u.file.fp);
+            }
+        }        
+    }
+    
+    /* make sure the line is correctly terminated */
+    len = strlen(sys->lineBuf);
+    if (len == 0 || sys->lineBuf[len - 1] != '\n') {
+        sys->lineBuf[len++] = '\n';
+        sys->lineBuf[len] = '\0';
+    }
+
+    /* initialize the input buffer */
     sys->linePtr = sys->lineBuf;
+    
+    /* return successfully */
     return VMTRUE;
 }
 

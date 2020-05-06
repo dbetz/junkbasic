@@ -19,6 +19,7 @@
 } ktab[] = {
 
 /* these must be in the same order as the int enum */
+{   "INCLUDE",  T_INCLUDE   },
 {   "REM",      T_REM       },
 {   "DIM",      T_DIM       },
 {   "FUNCTION", T_FUNCTION  },
@@ -45,6 +46,7 @@
 {   "RETURN",   T_RETURN    },
 {   "PRINT",    T_PRINT     },
 {   "ASM",      T_ASM       },
+{   "INCLUDE",  T_INCLUDE   },
 {   NULL,       0           }
 };
 

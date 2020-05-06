@@ -22,14 +22,6 @@ typedef struct Symbol Symbol;
 typedef struct ParseTreeNode ParseTreeNode;
 typedef struct NodeListEntry NodeListEntry;
 
-/* code generator context */
-typedef struct GenerateContext GenerateContext;
-struct GenerateContext {
-    System *sys;
-    uint8_t *codeBuf;
-};
-
-
 /* lexical tokens */
 enum {
     T_NONE,
@@ -60,6 +52,7 @@ enum {
     T_RETURN,
     T_PRINT,
     T_ASM,
+    T_INCLUDE,
     T_END_FUNCTION, /* compound keywords */
     T_END_SUB,
     T_ELSE_IF,
