@@ -340,12 +340,10 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
     /* make sure there is enough space */
     if (buf->buffer - spaceNeeded < buf->sys->nextLow)
         return VMFALSE;
-
+        
     /* make space for the new line */
-    if (spaceNeeded != 0) {
-        memmove(buf->buffer - spaceNeeded, buf->buffer, next - buf->buffer);
-        buf->buffer -= spaceNeeded;
-    }
+    memmove(buf->buffer - spaceNeeded, buf->buffer, spaceNeeded > 0 ? spaceNeeded : -spaceNeeded);
+    buf->buffer -= spaceNeeded;
     
     /* adjust the line start */
     line = (Line *)((uint8_t *)line - spaceNeeded);
