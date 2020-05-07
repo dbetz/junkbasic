@@ -213,6 +213,7 @@ static void DoLoad(EditBuf *buf)
         VM_printf("Loading '%s'\n", buf->programName);
         BufNew(buf);
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
+        printf("line: %s", sys->lineBuf);
             BufAddLineN(buf, lineNumber, sys->lineBuf);
             lineNumber += lineNumberIncrement;
         }
@@ -342,7 +343,7 @@ static int BufAddLineN(EditBuf *buf, int lineNumber, const char *text)
         return VMFALSE;
         
     /* make space for the new line */
-    memmove(buf->buffer - spaceNeeded, buf->buffer, spaceNeeded > 0 ? spaceNeeded : -spaceNeeded);
+    memmove(buf->buffer - spaceNeeded, buf->buffer, next - buf->buffer);
     buf->buffer -= spaceNeeded;
     
     /* adjust the line start */

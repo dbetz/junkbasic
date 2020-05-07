@@ -420,7 +420,7 @@ static void code_symbolRef(GenerateContext *c, Symbol *sym)
 /* code_arrayref - code an array reference */
 static void code_arrayref(GenerateContext *c, ParseTreeNode *expr, PVAL *pv)
 {
-    code_rvalue(c, expr->u.arrayRef.array);
+    code_lvalue(c, expr->u.arrayRef.array, pv);
     code_rvalue(c, expr->u.arrayRef.index);
     putcbyte(c, OP_INDEX);
     pv->fcn = code_index;
