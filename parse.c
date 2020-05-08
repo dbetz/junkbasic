@@ -441,7 +441,6 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
                 ParseError(c, "too many initializers");
 
             /* store the initial value */
-            printf("%d %d\n", codeaddr(c->g), value);
             putdword(c->g, value);
 
             switch (tkn = GetToken(c)) {
