@@ -100,6 +100,7 @@ struct String {
 };
 
 /* storage class ids */
+/* this must match the array of names in debug.c */
 typedef enum {
     SC_UNKNOWN,
     SC_CONSTANT,
@@ -109,6 +110,7 @@ typedef enum {
 } StorageClass;
 
 /* symbol types */
+/* this must match the array of names in debug.c */
 typedef enum {
     TYPE_UNKNOWN,
     TYPE_INTEGER,

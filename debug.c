@@ -11,7 +11,8 @@
 static char *storageClassNames[] = {
     "unknown",
     "constant",
-    "variable"
+    "variable",
+    "function"
 };
 
 static char *typeNames[] = {
