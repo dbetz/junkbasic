@@ -351,6 +351,7 @@ void DumpFunctions(GenerateContext *c);
 VMVALUE codeaddr(GenerateContext *c);
 VMVALUE putcbyte(GenerateContext *c, int b);
 VMVALUE putcword(GenerateContext *c, VMVALUE w);
+VMVALUE putdword(GenerateContext *c, VMVALUE w);
 
 #endif
 

@@ -485,7 +485,7 @@ VMVALUE putcbyte(GenerateContext *c, int b)
     System *sys = c->sys;
     VMVALUE addr = codeaddr(c);
     if (sys->nextLow >= sys->nextHigh)
-        GenerateFatal(c, "Bytecode buffer overflow");
+        GenerateFatal(c, "bytecode buffer overflow");
     *sys->nextLow++ = b;
     return addr;
 }
@@ -498,13 +498,25 @@ VMVALUE putcword(GenerateContext *c, VMVALUE w)
     uint8_t *p;
     int cnt = sizeof(VMVALUE);
     if (sys->nextLow + sizeof(VMVALUE) > sys->nextHigh)
-        GenerateFatal(c, "Bytecode buffer overflow");
+        GenerateFatal(c, "bytecode buffer overflow");
      sys->nextLow += sizeof(VMVALUE);
      p = sys->nextLow;
      while (--cnt >= 0) {
         *--p = w;
         w >>= 8;
     }
+    return addr;
+}
+
+/* putdword - put a code word into the code buffer */
+VMVALUE putdword(GenerateContext *c, VMVALUE w)
+{
+    System *sys = c->sys;
+    VMVALUE addr = codeaddr(c);
+    if (sys->nextLow + sizeof(VMVALUE) > sys->nextHigh)
+        GenerateFatal(c, "bytecode buffer overflow");
+    *((VMVALUE *)sys->nextLow) = w;
+    sys->nextLow += sizeof(VMVALUE);
     return addr;
 }
 

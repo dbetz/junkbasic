@@ -213,7 +213,6 @@ static void DoLoad(EditBuf *buf)
         VM_printf("Loading '%s'\n", buf->programName);
         BufNew(buf);
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
-        printf("line: %s", sys->lineBuf);
             BufAddLineN(buf, lineNumber, sys->lineBuf);
             lineNumber += lineNumberIncrement;
         }

@@ -82,7 +82,6 @@ static ParseTreeNode *GetSymbolRef(ParseContext *c, const char *name);
 static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node);
 static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node);
 static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node);
-static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node);
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr);
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
 static char *NodeTypeName(NodeType type);
@@ -289,12 +288,15 @@ static void ParseDim(ParseContext *c)
         if (c->currentFunction == c->mainFunction) {
             Symbol *sym;
 
+            /* get the address of the data */
+            value = codeaddr(c->g);
+            
             /* check for initializers */
             if ((tkn = GetToken(c)) == '=') {
                 if (isArray)
                     ParseArrayInitializers(c, size);
                 else
-                    putcword(c->g, ParseScalarInitializer(c));
+                    putdword(c->g, ParseScalarInitializer(c));
             }
 
             /* no initializers */
@@ -303,11 +305,8 @@ static void ParseDim(ParseContext *c)
                 SaveToken(c, tkn);
             }
 
-            /* allocate space for the data */
-            value = codeaddr(c->g);
-            
             /* add the symbol to the global symbol table */
-            sym = AddGlobal(c, name, SC_VARIABLE, &c->integerType, value);
+            sym = AddGlobal(c, name, isArray ? SC_CONSTANT : SC_VARIABLE, &c->integerType, value);
             sym->placed = VMTRUE;
         }
 
@@ -442,7 +441,8 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
                 ParseError(c, "too many initializers");
 
             /* store the initial value */
-            putcword(c->g, value);
+            printf("%d %d\n", codeaddr(c->g), value);
+            putdword(c->g, value);
 
             switch (tkn = GetToken(c)) {
             case T_EOL:
@@ -467,7 +467,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 {
     while (--size >= 0)
-        putcword(c->g, 0);
+        putdword(c->g, 0);
 }
 
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */
@@ -1256,7 +1256,6 @@ static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveVariableRef - resolve an unknown global reference to a variable reference */
 static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 {
-    printf("ResolveVariableRef: %s\n", NodeTypeName(node->nodeType));
     PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
@@ -1268,19 +1267,11 @@ static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveFunctionRef - resolve an unknown global symbol reference to a function reference */
 static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node)
 {
-    printf("ResolveFunctionRef: %s\n", NodeTypeName(node->nodeType));
     PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
         symbol->storageClass = SC_FUNCTION;
         symbol->type = &c->integerFunctionType;
-    }
-}
-
-/* ResolveArrayRef - resolve an unknown global symbol reference ot an array reference */
-static void ResolveArrayRef(ParseContext *c, ParseTreeNode *node)
-{
-    if (IsUnknownGlobolRef(c, node)) {
     }
 }
 
