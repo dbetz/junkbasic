@@ -21,6 +21,22 @@ typedef struct SymbolTable SymbolTable;
 typedef struct Symbol Symbol;
 typedef struct ParseTreeNode ParseTreeNode;
 typedef struct NodeListEntry NodeListEntry;
+typedef struct ParseFile ParseFile;
+typedef struct IncludedFile IncludedFile;
+
+/* parse file */
+struct ParseFile {
+    ParseFile *next;
+    IncludedFile *file;
+    void *fp;
+    int lineNumber;
+};
+
+/* included file */
+struct IncludedFile {
+    IncludedFile *next;
+    char name[1];
+};
 
 /* lexical tokens */
 enum {
@@ -173,6 +189,8 @@ struct Symbol {
 typedef struct {
     System *sys;                    /* system context */
     GenerateContext *g;             /* generate - generate context */
+    ParseFile *currentFile;         /* current input file */
+    IncludedFile *includedFiles;    /* list of files that have already been included */
     int lineNumber;                 /* scan - current line number */
     int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
@@ -309,6 +327,8 @@ void Compile(ParseContext *c);
 
 /* parse.c */
 ParseContext *InitParseContext(System *sys);
+int PushFile(ParseContext *c, const char *name);
+int ParseGetLine(ParseContext *c);
 ParseTreeNode *StartFunction(ParseContext *c, Symbol *symbol);
 void ParseStatement(ParseContext *c, int tkn);
 VMVALUE ParseIntegerConstant(ParseContext *c);

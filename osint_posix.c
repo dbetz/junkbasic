@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     _setrootvfs(_vfs_open_host());  // to access host files
     //_setrootvfs(_vfs_open_sdcard()); // to access files on SD card
 #endif
-        sys->mainFile.u.main.getLine = GetConsoleLine;
+        sys->getLine = GetConsoleLine;
         EditWorkspace(sys);
     }
     return 0;

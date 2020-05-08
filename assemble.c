@@ -27,7 +27,7 @@ void ParseAsm(ParseContext *c)
     for (;;) {
     
         /* get the next line */
-        if (!GetLine(sys, &c->lineNumber))
+        if (!ParseGetLine(c))
             ParseError(c, "unexpected end of file in ASM statement");
         
         /* check for the end of the assembly instructions */

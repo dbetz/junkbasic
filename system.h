@@ -16,39 +16,9 @@
 
 /* forward type definitions */
 typedef struct System System;
-typedef struct IncludedFile IncludedFile;
 
 /* line input handler */
 typedef char *GetLineHandler(char *buf, int len, int *pLineNumber, void *cookie);
-
-/* main file */
-typedef struct {
-    GetLineHandler *getLine;    /* function to get a line from the source program */
-    void *getLineCookie;        /* cookie for the rewind and getLine functions */
-} MainFile;
-
-/* current include file */
-typedef struct {
-    IncludedFile *file;
-    void *fp;
-    int lineNumber;
-} CurrentIncludeFile;
-
-/* parse file */
-typedef struct ParseFile ParseFile;
-struct ParseFile {
-    ParseFile *next;
-    union {
-        CurrentIncludeFile file;
-        MainFile main;
-    } u;
-};
-
-/* included file */
-struct IncludedFile {
-    IncludedFile *next;
-    char name[1];
-};
 
 /* code generator context */
 typedef struct GenerateContext GenerateContext;
@@ -67,9 +37,8 @@ struct System {
     uint8_t *nextLow;               /* next low memory heap space location */
     size_t heapSize;                /* size of heap space in bytes */
     size_t maxHeapUsed;             /* maximum amount of heap space allocated so far */
-    ParseFile mainFile;             /* main input file */
-    ParseFile *currentFile;         /* current input file */
-    IncludedFile *includedFiles;    /* list of files that have already been included */
+    GetLineHandler *getLine;        /* function to get a line from the source program */
+    void *getLineCookie;            /* cookie for the rewind and getLine functions */
     char lineBuf[MAXLINE];          /* current input line */
     char *linePtr;                  /* pointer to the current character */
 };
@@ -79,7 +48,6 @@ void *AllocateHighMemory(System *sys, size_t size);
 void *AllocateLowMemory(System *sys, size_t size);
 void GetMainSource(System *sys, GetLineHandler **pGetLine, void **pGetLineCookie);
 void SetMainSource(System *sys, GetLineHandler *getLine, void *getLineCookie);
-int PushFile(System *sys, const char *name);
 int GetLine(System *sys, int *pLineNumber);
 void Abort(System *sys, const char *fmt, ...);
 

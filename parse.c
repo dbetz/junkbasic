@@ -190,7 +190,7 @@ static void ParseInclude(ParseContext *c)
     FRequire(c, T_STRING);
     strcpy(name, c->token);
     FRequire(c, T_EOL);
-    if (!PushFile(c->sys, name))
+    if (!PushFile(c, name))
         ParseError(c, "include file not found: %s", name);
 }
 
@@ -420,7 +420,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         /* look for the first non-blank line */
         while ((tkn = GetToken(c)) == T_EOL) {
-            if (!GetLine(c->sys, &c->lineNumber))
+            if (!ParseGetLine(c))
                 ParseError(c, "unexpected end of file in initializers");
         }
 

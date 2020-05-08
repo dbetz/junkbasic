@@ -155,8 +155,8 @@ static void DoRun(EditBuf *buf)
         VM_printf("insufficient memory");
     
     GetMainSource(sys, &getLine, &getLineCookie);
+    
     SetMainSource(sys, EditGetLine, buf);
-
     BufSeekN(buf, 0);
 
     Compile(c);

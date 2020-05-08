@@ -8,11 +8,6 @@
 #include "compile.h"
 #include "vmint.h"
 
-/* local function prototypes */
-static void EnterBuiltInSymbols(ParseContext *c);
-static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr);
-static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr);
-
 /* InitCompileContext - initialize the compile (parse) context */
 ParseContext *InitCompileContext(System *sys)
 {
@@ -34,7 +29,7 @@ void Compile(ParseContext *c)
     /* setup an error target */
     if (setjmp(c->sys->errorTarget) != 0)
         return;
-
+        
     /* initialize the string table */
     c->strings = NULL;
 
@@ -48,14 +43,11 @@ void Compile(ParseContext *c)
     /* initialize the global symbol table */
     InitSymbolTable(&c->globals);
     
-    /* enter the built-in symbols */
-    EnterBuiltInSymbols(c);
-
     /* initialize scanner */
     InitScan(c);
     
     /* parse the program */
-    while (GetLine(c->sys, &c->lineNumber)) {
+    while (ParseGetLine(c)) {
         int tkn;
         if ((tkn = GetToken(c)) != T_EOL)
             ParseStatement(c, tkn);
@@ -86,24 +78,89 @@ void Compile(ParseContext *c)
     }
 }
 
-/* EnterBuiltInSymbols - enter the built-in symbols */
-static void EnterBuiltInSymbols(ParseContext *c)
+/* PushFile - push a file onto the input file stack */
+int PushFile(ParseContext *c, const char *name)
 {
-#if 0
-    EnterBuiltInFunction(c, "printInt",  (VMVALUE)0);
-    EnterBuiltInFunction(c, "printStr",  (VMVALUE)0);
-    EnterBuiltInFunction(c, "printNL",  (VMVALUE)0);
-#endif
+    System *sys = c->sys;
+    IncludedFile *inc;
+    ParseFile *f;
+    void *fp;
+    
+    /* check to see if the file has already been included */
+    for (inc = c->includedFiles; inc != NULL; inc = inc->next)
+        if (strcmp(name, inc->name) == 0)
+            return VMTRUE;
+    
+    /* add this file to the list of already included files */
+    if (!(inc = (IncludedFile *)AllocateHighMemory(sys, sizeof(IncludedFile) + strlen(name))))
+        Abort(sys, "insufficient memory");
+    strcpy(inc->name, name);
+    inc->next = c->includedFiles;
+    c->includedFiles = inc;
+
+    /* open the input file */
+    if (!(fp = VM_open(sys, name, "r")))
+        return VMFALSE;
+    
+    /* allocate a parse file structure */
+    if (!(f = (ParseFile *)AllocateHighMemory(sys, sizeof(ParseFile))))
+        Abort(sys, "insufficient memory");
+    
+    /* initialize the parse file structure */
+    f->fp = fp;
+    f->file = inc;
+    f->lineNumber = 0;
+    
+    /* push the file onto the input file stack */
+    f->next = c->currentFile;
+    c->currentFile = f;
+    
+    /* return successfully */
+    return VMTRUE;
 }
 
-/* EnterBuiltInVariable - enter a built-in variable */
-static void EnterBuiltInVariable(ParseContext *c, const char *name, VMVALUE addr)
+/* ParseGetLine - get the next input line */
+int ParseGetLine(ParseContext *c)
 {
-    AddGlobal(c, name, SC_VARIABLE, &c->integerType, addr);
+    System *sys = c->sys;
+    ParseFile *f;
+    int len;
+
+    /* get the next input line */
+    for (;;) {
+        
+        /* get a line from the main input */
+        if (!(f = c->currentFile)) {
+            if (GetLine(sys, sys->getLineCookie))
+                break;
+            else
+                return VMFALSE;
+        }
+        
+        /* get a line from the current include file */
+        else {
+            if (VM_getline(sys->lineBuf, sizeof(sys->lineBuf) - 1, f->fp)) {
+             	c->lineNumber = ++f->lineNumber;
+               	break;
+            }
+            else {
+                c->currentFile = f->next;
+                fclose(f->fp);
+            }
+        }        
+    }
+    
+    /* make sure the line is correctly terminated */
+    len = strlen(sys->lineBuf);
+    if (len == 0 || sys->lineBuf[len - 1] != '\n') {
+        sys->lineBuf[len++] = '\n';
+        sys->lineBuf[len] = '\0';
+    }
+
+    /* initialize the input buffer */
+    sys->linePtr = sys->lineBuf;
+    
+    /* return successfully */
+    return VMTRUE;
 }
 
-/* EnterBuiltInFunction - enter a built-in function */
-static void EnterBuiltInFunction(ParseContext *c, const char *name, VMVALUE addr)
-{
-    AddGlobal(c, name, SC_FUNCTION, &c->integerFunctionType, addr);
-}
