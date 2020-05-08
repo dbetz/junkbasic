@@ -145,7 +145,7 @@ int ParseGetLine(ParseContext *c)
             }
             else {
                 c->currentFile = f->next;
-                fclose(f->fp);
+                VM_close(f->fp);
             }
         }        
     }

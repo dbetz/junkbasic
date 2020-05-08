@@ -46,6 +46,7 @@ struct System {
 System *InitSystem(uint8_t *freeSpace, size_t freeSize);
 void *AllocateHighMemory(System *sys, size_t size);
 void *AllocateLowMemory(System *sys, size_t size);
+
 void GetMainSource(System *sys, GetLineHandler **pGetLine, void **pGetLineCookie);
 void SetMainSource(System *sys, GetLineHandler *getLine, void *getLineCookie);
 int GetLine(System *sys, int *pLineNumber);
