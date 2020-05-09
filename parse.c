@@ -245,7 +245,7 @@ static void ParseEndFunction(ParseContext *c)
         ParseError(c, "not in a function definition");
     else if (c->bptr->type != BLOCK_FUNCTION)
         ParseError(c, "function definition not complete");
-    PrintNode(c->currentFunction, 0);
+    //PrintNode(c->currentFunction, 0);
     Generate(c->g, c->currentFunction);
     EndFunction(c);
 }
@@ -1255,7 +1255,6 @@ static int IsUnknownGlobolRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveVariableRef - resolve an unknown global reference to a variable reference */
 static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 {
-    PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
         symbol->storageClass = SC_VARIABLE;
@@ -1266,7 +1265,6 @@ static void ResolveVariableRef(ParseContext *c, ParseTreeNode *node)
 /* ResolveFunctionRef - resolve an unknown global symbol reference to a function reference */
 static void ResolveFunctionRef(ParseContext *c, ParseTreeNode *node)
 {
-    PrintNode(node, 2);
     if (IsUnknownGlobolRef(c, node)) {
         Symbol *symbol = node->u.symbolRef.symbol;
         symbol->storageClass = SC_FUNCTION;

@@ -131,7 +131,7 @@ int ParseGetLine(ParseContext *c)
         
         /* get a line from the main input */
         if (!(f = c->currentFile)) {
-            if (GetLine(sys, sys->getLineCookie))
+            if (GetLine(sys, &c->lineNumber))
                 break;
             else
                 return VMFALSE;
@@ -141,6 +141,7 @@ int ParseGetLine(ParseContext *c)
         else {
             if (VM_getline(sys->lineBuf, sizeof(sys->lineBuf) - 1, f->fp)) {
              	c->lineNumber = ++f->lineNumber;
+                sys->linePtr = sys->lineBuf;
                	break;
             }
             else {
@@ -157,9 +158,6 @@ int ParseGetLine(ParseContext *c)
         sys->lineBuf[len] = '\0';
     }
 
-    /* initialize the input buffer */
-    sys->linePtr = sys->lineBuf;
-    
     /* return successfully */
     return VMTRUE;
 }

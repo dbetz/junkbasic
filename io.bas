@@ -5,7 +5,7 @@ function printStr(str, chn)
  end asm
 end function
 
-function printInt(n, chn)
+function printInt(chn, n)
  asm
   lref 1
   trap 3

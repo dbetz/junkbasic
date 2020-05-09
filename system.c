@@ -101,4 +101,3 @@ void Abort(System *sys, const char *fmt, ...)
     va_end(ap);
     longjmp(sys->errorTarget, 1);
 }
-

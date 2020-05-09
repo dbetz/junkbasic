@@ -150,7 +150,7 @@ static void DoRun(EditBuf *buf)
     
     sys->nextHigh = buf->buffer;
     sys->nextLow = sys->freeSpace;
-
+    
     if (!(c = InitCompileContext(sys)))
         VM_printf("insufficient memory");
     
@@ -303,8 +303,8 @@ static EditBuf *BufInit(System *sys)
         return NULL;
     memset(buf, 0, sizeof(EditBuf));
     buf->sys = sys;
-    buf->buffer = sys->nextHigh;
-    buf->bufferTop = buf->buffer;
+    buf->bufferTop = sys->nextHigh;
+    buf->buffer = buf->bufferTop;
     buf->currentLine = (Line *)buf->buffer;
     return buf;
 }

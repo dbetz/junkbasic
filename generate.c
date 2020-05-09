@@ -546,7 +546,6 @@ static void fixup(GenerateContext *c, VMUVALUE chn, VMUVALUE val)
 {
     while (chn != 0) {
         int nxt = rd_cword(c, chn);
-        VM_printf("chn %0*x, nxt %0*x\n", sizeof(VMVALUE) * 2, chn, sizeof(VMVALUE) * 2, nxt);
         wr_cword(c, chn, val);
         chn = nxt;
     }
@@ -584,7 +583,6 @@ void PlaceSymbol(GenerateContext *c, Symbol *sym, VMUVALUE offset)
     if (sym->placed)
         GenerateFatal(c, "Duplicate definition of '%s'", sym->name);
     else {
-        VM_printf("Place %s: fixups %0*x, value %0*x\n", sym->name, sizeof(VMVALUE) * 2, sym->value, sizeof(VMVALUE) * 2, offset);
         fixup(c, sym->value, offset);
         sym->placed = VMTRUE;
         sym->value = offset;
